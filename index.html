@@ -82,11 +82,22 @@
     position:relative; z-index:1;
     padding:10px 0 140px;
     display:flex; justify-content:center;
+    overflow-x:auto;
   }
-  #treeSvg{ width:min(900px, 100%); height:auto; display:block; }
+  .tree-glow{
+    position:absolute; z-index:0;
+    top:6%; left:50%; transform:translateX(-50%);
+    width:min(1100px, 130%); height:78%;
+    background:radial-gradient(ellipse 55% 45% at 50% 40%, rgba(180,255,205,0.16), rgba(124,240,163,0.08) 45%, transparent 72%);
+    filter:blur(6px);
+    pointer-events:none;
+  }
+  #treeSvg{ position:relative; z-index:1; width:min(1400px, 100%); height:auto; display:block; }
 
   .trunk{ fill:var(--bark); }
   .branch{ fill:none; stroke:var(--bark-light); stroke-linecap:round; }
+  .twig{ fill:none; stroke:var(--bark-light); stroke-linecap:round; opacity:.85; }
+  .bud{ fill:var(--moss-dim); opacity:.55; }
 
   .leaf-group{ cursor:pointer; }
   .leaf-group .hit{ fill:transparent; }
@@ -220,6 +231,7 @@
 <p class="hint">tap a leaf to open it · each new entry grows a new branch</p>
 
 <div class="canvas-wrap">
+  <div class="tree-glow"></div>
   <svg id="treeSvg" xmlns="http://www.w3.org/2000/svg"></svg>
 </div>
 
@@ -277,53 +289,141 @@
     }
   }
 
-  /* ---------- tree layout ---------- */
-  const VBW = 900;
-  const TOP_MARGIN = 90;
-  const BOTTOM_MARGIN = 50;
-  const SPACING = 92;
+  /* ---------- tree layout: a wide oak, short trunk forking into sideways limbs ---------- */
+  const BASE_VBW = 1040;
+  const BASE_VBH = 640;
+  const GROUND_MARGIN = 46;
 
-  function trunkWidthAt(t){ return 46 - t*32; } // t: 0 bottom -> 1 top
-  function trunkSway(y, height){ return Math.sin((height-y)*0.0055)*24; }
+  // limb skeleton: angle in degrees from straight-up (negative = left, positive = right,
+  // values over 90 sweep back down toward the ground, like the drooping limb in a mature oak)
+  const LIMBS = [
+    { angle:-92, baseLen:150 },
+    { angle:-52, baseLen:190 },
+    { angle:-14, baseLen:210 },
+    { angle: 22, baseLen:195 },
+    { angle: 58, baseLen:165 },
+    { angle:104, baseLen:140 }, // the low, drooping limb
+  ];
+
+  function rotVec(x,y,theta){
+    const c=Math.cos(theta), s=Math.sin(theta);
+    return [x*c - y*s, x*s + y*c];
+  }
+
+  // point + tangent along a quadratic bezier, for placing twigs on a branch
+  function bezierPoint(p0,c,p1,t){
+    const x = (1-t)*(1-t)*p0[0] + 2*(1-t)*t*c[0] + t*t*p1[0];
+    const y = (1-t)*(1-t)*p0[1] + 2*(1-t)*t*c[1] + t*t*p1[1];
+    const dx = 2*(1-t)*(c[0]-p0[0]) + 2*t*(p1[0]-c[0]);
+    const dy = 2*(1-t)*(c[1]-p0[1]) + 2*t*(p1[1]-c[1]);
+    const len = Math.hypot(dx,dy) || 1;
+    return { x, y, tx:dx/len, ty:dy/len };
+  }
 
   function buildLayout(list){
-    const height = Math.max(560, TOP_MARGIN + BOTTOM_MARGIN + list.length*SPACING + 40);
-    const centerBase = VBW/2;
+    const scale = 1 + Math.min(0.65, list.length*0.018); // whole tree fills out as entries are added
+    const vbw = BASE_VBW + Math.min(640, list.length*22);
+    const vbh = BASE_VBH + Math.min(200, list.length*5);
+    const groundY = vbh - GROUND_MARGIN;
+    const trunkHeight = Math.min(160, 100 + list.length*1.1) * (0.9+scale*0.1);
+    const trunkTopX = vbw/2;
+    const trunkTopY = groundY - trunkHeight;
 
-    function cx(y){ return centerBase + trunkSway(y, height); }
-    function w(y){
-      const t = Math.min(Math.max((height-BOTTOM_MARGIN-y)/(height-BOTTOM_MARGIN-TOP_MARGIN),0),1);
-      return trunkWidthAt(t);
-    }
-
-    const steps = 44;
-    const left = [], right = [];
+    // short, thick trunk tapering from base to the crotch where it forks
+    const steps = 16, tLeft=[], tRight=[];
     for(let s=0;s<=steps;s++){
-      const y = (height-BOTTOM_MARGIN) - s*((height-BOTTOM_MARGIN-TOP_MARGIN)/steps);
-      left.push([cx(y)-w(y)/2, y]);
-      right.push([cx(y)+w(y)/2, y]);
+      const f = s/steps;
+      const y = groundY - f*trunkHeight;
+      const wgt = (1-f);
+      const halfw = (16 + wgt*20);
+      const sway = Math.sin(f*Math.PI*0.6)*6;
+      tLeft.push([trunkTopX - halfw + sway, y]);
+      tRight.push([trunkTopX + halfw + sway, y]);
     }
-    let trunkPath = "M " + left.map(p=>p.join(",")).join(" L ");
-    trunkPath += " L " + right.slice().reverse().map(p=>p.join(",")).join(" L ") + " Z";
+    let trunkPath = "M " + tLeft.map(p=>p.join(",")).join(" L ") + " L " + tRight.slice().reverse().map(p=>p.join(",")).join(" L ") + " Z";
 
-    const branches = list.map((entry, i)=>{
-      const y = (height-BOTTOM_MARGIN) - (i+1)*SPACING + SPACING*0.45;
-      const centerX = cx(y);
-      const side = (i % 2 === 0) ? 1 : -1;
-      const seed = hashCode(entry.id);
-      const angleDeg = 32 + (seed % 20);
-      const length = 74 + (seed % 34);
-      const angleRad = angleDeg*Math.PI/180;
-      const startX = centerX + side*(w(y)/2 - 2);
-      const startY = y;
-      const endX = startX + side*Math.sin(angleRad)*length;
-      const endY = startY - Math.cos(angleRad)*length;
-      const ctrlX = (startX+endX)/2 + side*10;
-      const ctrlY = (startY+endY)/2 - 4;
-      return { entry, startX, startY, endX, endY, ctrlX, ctrlY, side, angleDeg: side*angleDeg };
+    // spread entries across the limbs round-robin, in the order they were created
+    const perLimb = LIMBS.map(()=>[]);
+    list.forEach((entry,i)=> perLimb[i % LIMBS.length].push(entry));
+
+    const limbs = LIMBS.map((limb, li)=>{
+      const angleRad = limb.angle * Math.PI/180;
+      const u = [Math.sin(angleRad), -Math.cos(angleRad)];
+      const perp = [Math.cos(angleRad), Math.sin(angleRad)];
+      const baseLen = limb.baseLen * scale;
+      const spacing = 62 * scale;
+
+      function centerAt(d){
+        const sway = Math.sin(d*0.018 + li*1.7) * 9 * scale;
+        return [trunkTopX + u[0]*d + perp[0]*sway, trunkTopY + u[1]*d + perp[1]*sway];
+      }
+
+      const branches = [];
+      let maxD = baseLen*0.4;
+      const myEntries = perLimb[li];
+      myEntries.forEach((entry, j)=>{
+        const d = baseLen*0.4 + (j+1)*spacing;
+        maxD = Math.max(maxD, d + 46);
+        const [px,py] = centerAt(d);
+        const seed = hashCode(entry.id);
+        const side = (j % 2 === 0) ? 1 : -1;
+        const branchAngle = (30 + (seed % 26)) * Math.PI/180;
+        const branchLen = (58 + (seed % 30)) * scale;
+        const [bx,by] = rotVec(u[0], u[1], side*branchAngle);
+        const endX = px + bx*branchLen, endY = py + by*branchLen;
+        const ctrlX = (px+endX)/2 + perp[0]*side*12;
+        const ctrlY = (py+endY)/2 + perp[1]*side*12;
+        const leafAngleDeg = Math.atan2(bx,-by) * 180/Math.PI;
+
+        const twigs = [];
+        const twigCount = 1 + (seed % 2);
+        for(let k=0;k<twigCount;k++){
+          const t = 0.4 + ((seed >> (k+2)) % 30)/100;
+          const p = bezierPoint([px,py],[ctrlX,ctrlY],[endX,endY], t);
+          const twigSide = (k % 2 === 0) ? side : -side;
+          const twigAngle = (26 + ((seed >> (k+4)) % 22)) * Math.PI/180;
+          const twigLen = (20 + ((seed >> (k+1)) % 20)) * scale;
+          const baseAngle = Math.atan2(p.tx, -p.ty);
+          const dir = baseAngle + twigSide*twigAngle;
+          twigs.push({ x1:p.x, y1:p.y, x2:p.x+Math.sin(dir)*twigLen, y2:p.y-Math.cos(dir)*twigLen });
+        }
+
+        branches.push({ entry, startX:px, startY:py, endX, endY, ctrlX, ctrlY, angleDeg:leafAngleDeg, twigs });
+      });
+
+      const limbLen = Math.max(baseLen, maxD + 24);
+
+      // taper the limb itself along its curved centerline
+      const lsteps = 22, lLeft=[], lRight=[];
+      for(let s=0;s<=lsteps;s++){
+        const d = (s/lsteps)*limbLen;
+        const f = d/limbLen;
+        const halfw = (13 - f*9) * scale;
+        const [cx,cy] = centerAt(d);
+        lLeft.push([cx - perp[0]*halfw, cy - perp[1]*halfw]);
+        lRight.push([cx + perp[0]*halfw, cy + perp[1]*halfw]);
+      }
+      const limbPath = "M " + lLeft.map(p=>p.join(",")).join(" L ") + " L " + lRight.slice().reverse().map(p=>p.join(",")).join(" L ") + " Z";
+
+      // small filler twigs along bare stretches of the limb, for fullness
+      const fillerTwigs = [];
+      const usedD = branches.map((b,j)=> baseLen*0.4 + (j+1)*spacing);
+      for(let d = baseLen*0.25; d < limbLen-20; d += 30*scale){
+        const near = usedD.some(ud => Math.abs(ud-d) < 20);
+        const seed = hashCode("filler-"+li+"-"+Math.round(d));
+        if(near || seed % 4 === 0) continue;
+        const [cx,cy] = centerAt(d);
+        const side = (seed % 2 === 0) ? 1 : -1;
+        const fAngle = (34 + (seed % 26)) * Math.PI/180;
+        const fLen = (14 + (seed % 16)) * scale;
+        const [fx,fy] = rotVec(u[0], u[1], side*fAngle);
+        fillerTwigs.push({ x1:cx, y1:cy, x2:cx+fx*fLen, y2:cy+fy*fLen });
+      }
+
+      return { path:limbPath, branches, fillerTwigs };
     });
 
-    return { width:VBW, height, trunkPath, branches };
+    return { width:vbw, height:vbh, groundY, trunkPath, limbs };
   }
 
   /* ---------- render ---------- */
@@ -348,39 +448,47 @@
         </radialGradient>
       </defs>`;
 
-    let ground = `<ellipse cx="${layout.width/2}" cy="${layout.height-24}" rx="180" ry="26" fill="url(#groundGlow)"/>`;
+    let ground = `<ellipse cx="${layout.width/2}" cy="${layout.groundY+6}" rx="${layout.width*0.32}" ry="22" fill="url(#groundGlow)"/>`;
 
-    let branchesSvg = layout.branches.map(b=>{
-      const strokeW = 5 + (hashCode(b.entry.id) % 4);
-      return `<path class="branch" d="M ${b.startX},${b.startY} Q ${b.ctrlX},${b.ctrlY} ${b.endX},${b.endY}" stroke-width="${strokeW}"/>`;
-    }).join("");
+    let limbPaths = "", branchesSvg = "", fillerSvg = "", leavesSvg = "";
+    layout.limbs.forEach(limb=>{
+      limbPaths += `<path class="trunk" d="${limb.path}"/>`;
+      fillerSvg += limb.fillerTwigs.map(tw=>
+        `<path class="twig" d="M ${tw.x1},${tw.y1} L ${tw.x2},${tw.y2}" stroke-width="2.5"/><circle class="bud" cx="${tw.x2}" cy="${tw.y2}" r="3"/>`
+      ).join("");
 
-    let leavesSvg = layout.branches.map((b,idx)=>{
-      const e = b.entry;
-      const done = e.done ? "done" : "";
-      const scale = 1.05 + (hashCode(e.id+"s") % 30)/100;
-      const dur = (3 + (hashCode(e.id+"d") % 20)/10).toFixed(1);
-      const delay = (-(hashCode(e.id+"e") % 30)/10).toFixed(1);
-      const labelY = b.endY - 34*scale - 10;
-      return `
-        <g class="leaf-group ${done}" data-id="${e.id}" tabindex="0" role="button"
-           style="animation-duration:${dur}s; animation-delay:${delay}s;">
-          <circle class="hit" cx="${b.endX}" cy="${b.endY - 16*scale}" r="26"/>
-          <g transform="translate(${b.endX},${b.endY}) rotate(${b.angleDeg}) scale(${scale})">
-            <path class="leaf-body" d="M0,-2 C -12,-14 -10,-32 0,-40 C 10,-32 12,-14 0,-2 Z"/>
-            <path class="leaf-vein" d="M0,-4 L0,-36"/>
-          </g>
-          <text class="leaf-label ${done}" x="${b.endX}" y="${labelY}">${escapeHtml(truncate(e.title, 16))}</text>
-        </g>`;
-    }).join("");
+      limb.branches.forEach(b=>{
+        const strokeW = 5 + (hashCode(b.entry.id) % 3);
+        branchesSvg += `<path class="branch" d="M ${b.startX},${b.startY} Q ${b.ctrlX},${b.ctrlY} ${b.endX},${b.endY}" stroke-width="${strokeW}"/>`;
+        branchesSvg += b.twigs.map(tw=>
+          `<path class="twig" d="M ${tw.x1},${tw.y1} L ${tw.x2},${tw.y2}" stroke-width="3"/><circle class="bud" cx="${tw.x2}" cy="${tw.y2}" r="4"/>`
+        ).join("");
+
+        const e = b.entry;
+        const done = e.done ? "done" : "";
+        const lscale = 1.05 + (hashCode(e.id+"s") % 30)/100;
+        const dur = (3 + (hashCode(e.id+"d") % 20)/10).toFixed(1);
+        const delay = (-(hashCode(e.id+"e") % 30)/10).toFixed(1);
+        const labelY = b.endY - 34*lscale - 10;
+        leavesSvg += `
+          <g class="leaf-group ${done}" data-id="${e.id}" tabindex="0" role="button"
+             style="animation-duration:${dur}s; animation-delay:${delay}s;">
+            <circle class="hit" cx="${b.endX}" cy="${b.endY - 16*lscale}" r="26"/>
+            <g transform="translate(${b.endX},${b.endY}) rotate(${b.angleDeg}) scale(${lscale})">
+              <path class="leaf-body" d="M0,-2 C -12,-14 -10,-32 0,-40 C 10,-32 12,-14 0,-2 Z"/>
+              <path class="leaf-vein" d="M0,-4 L0,-36"/>
+            </g>
+            <text class="leaf-label ${done}" x="${b.endX}" y="${labelY}">${escapeHtml(truncate(e.title, 16))}</text>
+          </g>`;
+      });
+    });
 
     let emptyMsg = list.length === 0
-      ? `<text class="empty-note" x="${layout.width/2}" y="${layout.height - TOP_MARGIN - 60}">no leaves yet — press ✦ to plant one</text>`
+      ? `<text class="empty-note" x="${layout.width/2}" y="${layout.groundY - 220}">no leaves yet — press ✦ to plant one</text>`
       : "";
 
-    svg.innerHTML = defs + ground
-      + `<path class="trunk" d="${layout.trunkPath}"/>`
-      + branchesSvg + leavesSvg + emptyMsg;
+    svg.innerHTML = defs + ground + `<path class="trunk" d="${layout.trunkPath}"/>`
+      + limbPaths + fillerSvg + branchesSvg + leavesSvg + emptyMsg;
 
     svg.querySelectorAll(".leaf-group").forEach(g=>{
       g.addEventListener("click", ()=> openModal(g.getAttribute("data-id")));
