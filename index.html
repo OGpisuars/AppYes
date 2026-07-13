@@ -2,362 +2,205 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Undergrove — a planner for the quiet hours</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Undergrove — a tree of your days</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg-deep:#050907;
     --bg-panel:#0b120d;
-    --bg-panel-2:#101b13;
     --bg-input:#0d1712;
     --line:#1c2e20;
     --line-glow:#2f5c3d;
     --moss:#4ade80;
     --moss-soft:#7cf0a3;
     --moss-dim:#245234;
-    --amber:#d9a441;
+    --amber:#e0a94a;
+    --amber-dim:#7a5a26;
+    --bark:#0a0806;
+    --bark-light:#1c1712;
     --text-main:#d3e2d6;
     --text-dim:#8ba394;
     --text-faint:#4a5f52;
     --danger:#c96a5a;
   }
-
-  *{box-sizing:border-box;}
-  html,body{height:100%;}
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%; margin:0;}
   body{
-    margin:0;
     background:var(--bg-deep);
     color:var(--text-main);
     font-family:'EB Garamond', serif;
-    overflow:hidden;
+    overflow-x:hidden;
   }
 
   /* ---------- atmosphere ---------- */
   .canopy{
     position:fixed; inset:0; pointer-events:none; z-index:0;
     background:
-      radial-gradient(ellipse 60% 40% at 15% 0%, rgba(74,222,128,0.10), transparent 60%),
-      radial-gradient(ellipse 50% 35% at 85% 10%, rgba(74,222,128,0.06), transparent 60%),
-      radial-gradient(ellipse 70% 50% at 50% 100%, rgba(20,40,26,0.6), transparent 70%);
+      radial-gradient(ellipse 60% 30% at 15% 0%, rgba(74,222,128,0.09), transparent 60%),
+      radial-gradient(ellipse 50% 25% at 85% 5%, rgba(74,222,128,0.06), transparent 60%),
+      radial-gradient(ellipse 80% 30% at 50% 100%, rgba(20,40,26,0.55), transparent 70%);
   }
   .firefly{
     position:fixed; z-index:0; border-radius:50%; pointer-events:none;
     background:var(--moss-soft);
-    box-shadow:0 0 6px 2px rgba(124,240,163,0.7), 0 0 16px 6px rgba(74,222,128,0.25);
+    box-shadow:0 0 6px 2px rgba(124,240,163,0.7), 0 0 16px 6px rgba(74,222,128,0.22);
     opacity:0;
     animation:drift linear infinite, glow 3.4s ease-in-out infinite;
   }
-  @keyframes drift{
-    0%{ transform:translate(0,0); }
-    100%{ transform:translate(var(--dx), var(--dy)); }
-  }
-  @keyframes glow{
-    0%,100%{ opacity:0; }
-    15%{ opacity:.85; }
-    50%{ opacity:.35; }
-    85%{ opacity:.85; }
-  }
+  @keyframes drift{ 0%{transform:translate(0,0);} 100%{transform:translate(var(--dx), var(--dy));} }
+  @keyframes glow{ 0%,100%{opacity:0;} 15%{opacity:.8;} 50%{opacity:.3;} 85%{opacity:.8;} }
 
-  /* ---------- layout ---------- */
-  .app{
-    position:relative; z-index:1;
-    display:grid;
-    grid-template-columns:300px 1fr;
-    height:100vh;
-  }
-
-  /* ---------- sidebar ---------- */
-  .sidebar{
-    background:linear-gradient(180deg, var(--bg-panel), #08110b 90%);
-    border-right:1px solid var(--line);
-    display:flex; flex-direction:column;
-    position:relative;
-  }
-  .sidebar::after{
-    content:"";
-    position:absolute; top:0; right:-1px; bottom:0; width:1px;
-    background:linear-gradient(180deg, transparent, var(--line-glow) 20%, var(--line-glow) 80%, transparent);
-    box-shadow:0 0 8px 1px rgba(74,222,128,0.25);
-  }
-  .brand{
-    padding:26px 22px 18px;
+  /* ---------- topbar ---------- */
+  .topbar{
+    position:sticky; top:0; z-index:10;
+    display:flex; align-items:center; gap:12px;
+    padding:12px 16px;
+    background:linear-gradient(180deg, rgba(5,9,7,0.96), rgba(5,9,7,0.85));
     border-bottom:1px solid var(--line);
+    backdrop-filter:blur(6px);
   }
-  .brand .glyph{
-    font-size:22px; color:var(--moss); text-shadow:0 0 10px rgba(74,222,128,0.6);
-  }
+  .brand{ display:flex; align-items:baseline; gap:8px; flex-shrink:0; }
+  .brand .glyph{ font-size:17px; color:var(--moss); text-shadow:0 0 8px rgba(74,222,128,0.6); }
   .brand h1{
-    font-family:'Cinzel', serif;
-    font-weight:600;
-    font-size:19px;
-    letter-spacing:2px;
-    margin:6px 0 4px;
-    color:var(--moss-soft);
-    text-shadow:0 0 14px rgba(74,222,128,0.35);
+    font-family:'Cinzel', serif; font-weight:600; font-size:15px; letter-spacing:1.8px;
+    margin:0; color:var(--moss-soft); text-shadow:0 0 10px rgba(74,222,128,0.3);
+    white-space:nowrap;
   }
-  .brand p{
-    margin:0; font-size:13px; color:var(--text-faint); font-style:italic;
-  }
-
-  .sidebar-controls{
-    padding:14px 16px; display:flex; flex-direction:column; gap:10px;
-    border-bottom:1px solid var(--line);
-  }
-  .search-wrap{ position:relative; }
+  .search-wrap{ position:relative; flex:1; min-width:0; }
   .search-wrap input{
-    width:100%;
-    background:var(--bg-input);
-    border:1px solid var(--line);
-    color:var(--text-main);
-    font-family:'EB Garamond', serif;
-    font-size:14px;
-    padding:9px 12px 9px 30px;
-    border-radius:6px;
-    outline:none;
-    transition:border-color .2s, box-shadow .2s;
+    width:100%; background:var(--bg-input); border:1px solid var(--line); color:var(--text-main);
+    font-family:'EB Garamond', serif; font-size:14px; padding:9px 12px 9px 30px; border-radius:20px;
+    outline:none; transition:border-color .2s, box-shadow .2s;
   }
-  .search-wrap input:focus{
-    border-color:var(--moss-dim);
-    box-shadow:0 0 0 3px rgba(74,222,128,0.08);
+  .search-wrap input:focus{ border-color:var(--moss-dim); box-shadow:0 0 0 3px rgba(74,222,128,0.08); }
+  .search-wrap::before{ content:"⌕"; position:absolute; left:11px; top:50%; transform:translateY(-50%); color:var(--text-faint); font-size:14px; }
+
+  /* ---------- canvas ---------- */
+  .canvas-wrap{
+    position:relative; z-index:1;
+    padding:10px 0 140px;
+    display:flex; justify-content:center;
   }
-  .search-wrap::before{
-    content:"⌕";
-    position:absolute; left:10px; top:50%; transform:translateY(-50%);
-    color:var(--text-faint); font-size:15px;
+  #treeSvg{ width:min(900px, 100%); height:auto; display:block; }
+
+  .trunk{ fill:var(--bark); }
+  .branch{ fill:none; stroke:var(--bark-light); stroke-linecap:round; }
+
+  .leaf-group{ cursor:pointer; }
+  .leaf-group .hit{ fill:transparent; }
+  .leaf-body{ fill:var(--moss-dim); stroke:var(--moss); stroke-width:1; filter:drop-shadow(0 0 4px rgba(74,222,128,0.45)); transition:fill .3s, stroke .3s; }
+  .leaf-vein{ stroke:rgba(6,14,9,0.55); stroke-width:1; }
+  .leaf-group:hover .leaf-body, .leaf-group:focus .leaf-body{ fill:var(--moss); filter:drop-shadow(0 0 9px rgba(124,240,163,0.85)); }
+  .leaf-group.done .leaf-body{ fill:var(--amber-dim); stroke:var(--amber); filter:drop-shadow(0 0 4px rgba(224,169,74,0.4)); }
+  .leaf-group.done:hover .leaf-body{ fill:var(--amber); filter:drop-shadow(0 0 9px rgba(224,169,74,0.7)); }
+  .leaf-group{ animation:sway ease-in-out infinite; transform-box:fill-box; transform-origin:bottom center; }
+  @keyframes sway{ 0%,100%{ transform:rotate(-2.5deg);} 50%{ transform:rotate(2.5deg);} }
+
+  .leaf-label{
+    font-family:'JetBrains Mono', monospace; font-size:12px; fill:var(--text-dim);
+    text-anchor:middle; pointer-events:none; letter-spacing:.3px;
   }
-  .new-btn{
-    background:linear-gradient(180deg, #163a24, #0f2a19);
+  .leaf-label.done{ fill:var(--amber); opacity:.75; }
+
+  .empty-note{
+    fill:var(--text-faint); font-family:'EB Garamond', serif; font-style:italic; font-size:18px; text-anchor:middle;
+  }
+
+  /* ---------- FAB ---------- */
+  .fab{
+    position:fixed; right:22px; bottom:26px; z-index:12;
+    width:58px; height:58px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #1d5a37, #0f2a19 70%);
     border:1px solid var(--moss-dim);
-    color:var(--moss-soft);
-    font-family:'Cinzel', serif;
-    font-size:12.5px;
-    letter-spacing:1.2px;
-    padding:10px 12px;
-    border-radius:6px;
-    cursor:pointer;
-    transition:all .2s;
+    color:var(--moss-soft); font-size:26px; font-family:'EB Garamond', serif;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; box-shadow:0 0 18px rgba(74,222,128,0.28), 0 4px 14px rgba(0,0,0,0.5);
+    transition:transform .15s, box-shadow .2s;
   }
-  .new-btn:hover{
-    box-shadow:0 0 14px rgba(74,222,128,0.28);
-    border-color:var(--moss);
-    color:#eafff0;
+  .fab:hover{ transform:scale(1.06); box-shadow:0 0 26px rgba(74,222,128,0.4), 0 4px 14px rgba(0,0,0,0.5); }
+  .fab:active{ transform:scale(.96); }
+
+  /* ---------- modal ---------- */
+  .modal-overlay{
+    position:fixed; inset:0; z-index:20;
+    background:rgba(3,6,4,0.68); backdrop-filter:blur(3px);
+    display:flex; align-items:flex-end; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity .2s;
+  }
+  .modal-overlay.show{ opacity:1; pointer-events:auto; }
+  .modal-card{
+    width:100%; max-width:460px;
+    max-height:88vh; overflow-y:auto;
+    background:linear-gradient(180deg, var(--bg-panel), #08110b);
+    border:1px solid var(--line-glow);
+    border-bottom:none;
+    border-radius:18px 18px 0 0;
+    padding:22px 22px 26px;
+    box-shadow:0 -4px 30px rgba(0,0,0,0.6), 0 0 30px rgba(74,222,128,0.06);
+    transform:translateY(24px);
+    transition:transform .25s ease;
+  }
+  .modal-overlay.show .modal-card{ transform:translateY(0); }
+  @media (min-width: 640px){
+    .modal-overlay{ align-items:center; }
+    .modal-card{ border-radius:16px; border-bottom:1px solid var(--line-glow); }
   }
 
-  .entries{
-    flex:1;
-    overflow-y:auto;
-    padding:8px 10px 20px;
+  .modal-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:4px; }
+  .close-btn{
+    background:none; border:none; color:var(--text-faint); font-size:20px; cursor:pointer;
+    line-height:1; padding:4px 6px; flex-shrink:0;
   }
-  .entries::-webkit-scrollbar{ width:8px; }
-  .entries::-webkit-scrollbar-thumb{ background:var(--line-glow); border-radius:4px; }
-
-  .day-label{
-    font-family:'JetBrains Mono', monospace;
-    font-size:10.5px;
-    letter-spacing:1.5px;
-    color:var(--text-faint);
-    text-transform:uppercase;
-    padding:14px 8px 6px;
-  }
-
-  .entry-card{
-    padding:11px 12px;
-    margin-bottom:6px;
-    border-radius:6px;
-    border:1px solid transparent;
-    cursor:pointer;
-    position:relative;
-    transition:background .15s, border-color .15s;
-  }
-  .entry-card:hover{
-    background:rgba(74,222,128,0.05);
-    border-color:var(--line);
-  }
-  .entry-card.active{
-    background:rgba(74,222,128,0.08);
-    border-color:var(--moss-dim);
-    box-shadow:inset 0 0 12px rgba(74,222,128,0.08);
-  }
-  .entry-card.done{ opacity:.5; }
-  .entry-card.done .entry-title{ text-decoration:line-through; }
-  .entry-title{
-    font-size:15px; color:var(--text-main); margin:0 0 4px;
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-  }
-  .entry-meta{
-    font-family:'JetBrains Mono', monospace;
-    font-size:10.5px;
-    color:var(--text-dim);
-    display:flex; gap:10px; flex-wrap:wrap;
-  }
-  .entry-meta span{ display:inline-flex; align-items:center; gap:3px; }
-
-  .empty-list{
-    color:var(--text-faint); font-size:13px; font-style:italic;
-    padding:30px 14px; text-align:center; line-height:1.6;
-  }
-
-  /* ---------- editor ---------- */
-  .editor{
-    display:flex; flex-direction:column;
-    padding:34px 48px;
-    overflow-y:auto;
-    background:
-      radial-gradient(ellipse 80% 40% at 50% 0%, rgba(74,222,128,0.045), transparent 60%);
-  }
-  .editor::-webkit-scrollbar{ width:9px; }
-  .editor::-webkit-scrollbar-thumb{ background:var(--line-glow); border-radius:5px; }
+  .close-btn:hover{ color:var(--moss-soft); }
 
   .title-input{
-    background:transparent;
-    border:none;
-    outline:none;
-    color:var(--moss-soft);
-    font-family:'Cinzel', serif;
-    font-weight:600;
-    font-size:30px;
-    letter-spacing:1px;
-    text-shadow:0 0 18px rgba(74,222,128,0.25);
-    width:100%;
-    margin-bottom:6px;
+    background:transparent; border:none; outline:none; color:var(--moss-soft);
+    font-family:'Cinzel', serif; font-weight:600; font-size:24px; letter-spacing:.5px;
+    text-shadow:0 0 14px rgba(74,222,128,0.25); width:100%; margin-bottom:2px;
   }
   .title-input::placeholder{ color:var(--text-faint); text-shadow:none; }
 
-  .save-status{
-    font-family:'JetBrains Mono', monospace;
-    font-size:11px;
-    color:var(--text-faint);
-    margin-bottom:22px;
-    letter-spacing:.5px;
-    min-height:14px;
-  }
+  .save-status{ font-family:'JetBrains Mono', monospace; font-size:10.5px; color:var(--text-faint); margin-bottom:16px; min-height:13px; }
   .save-status.on{ color:var(--moss); }
 
-  .field-row{
-    display:grid;
-    grid-template-columns:1fr 1fr 1fr;
-    gap:16px;
-    margin-bottom:22px;
+  .field-row{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px; }
+  .field{ display:flex; flex-direction:column; gap:5px; }
+  .field.full{ grid-column:1 / -1; }
+  .field label{ font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:1.3px; text-transform:uppercase; color:var(--text-dim); }
+  .field input{
+    background:var(--bg-input); border:1px solid var(--line); color:var(--text-main);
+    font-family:'EB Garamond', serif; font-size:15px; padding:8px 10px; border-radius:6px; outline:none;
+    transition:border-color .2s, box-shadow .2s; width:100%;
   }
-  .field{
-    display:flex; flex-direction:column; gap:6px;
-  }
-  .field label{
-    font-family:'JetBrains Mono', monospace;
-    font-size:10.5px;
-    letter-spacing:1.5px;
-    text-transform:uppercase;
-    color:var(--text-dim);
-  }
-  .field label .ic{ margin-right:5px; color:var(--moss); }
-  .field input, .field select{
-    background:var(--bg-input);
-    border:1px solid var(--line);
-    color:var(--text-main);
-    font-family:'EB Garamond', serif;
-    font-size:15px;
-    padding:9px 10px;
-    border-radius:6px;
-    outline:none;
-    transition:border-color .2s, box-shadow .2s;
-  }
-  .field input:focus, .field select:focus{
-    border-color:var(--moss-dim);
-    box-shadow:0 0 0 3px rgba(74,222,128,0.08);
-  }
+  .field input:focus{ border-color:var(--moss-dim); box-shadow:0 0 0 3px rgba(74,222,128,0.08); }
 
-  .vine-divider{
-    height:1px;
-    margin:6px 0 26px;
-    background:linear-gradient(90deg, var(--line-glow), transparent 70%);
-    position:relative;
-  }
-  .vine-divider::before{
-    content:"❧";
-    position:absolute; left:-2px; top:-11px;
-    color:var(--moss-dim); font-size:16px;
-  }
-
-  .notes-label{
-    font-family:'JetBrains Mono', monospace;
-    font-size:10.5px;
-    letter-spacing:1.5px;
-    text-transform:uppercase;
-    color:var(--text-dim);
-    margin-bottom:8px;
-  }
+  .notes-label{ font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:1.3px; text-transform:uppercase; color:var(--text-dim); margin-bottom:6px; }
   .notes-area{
-    flex:1;
-    min-height:220px;
-    background:var(--bg-input);
-    border:1px solid var(--line);
-    border-radius:8px;
-    color:var(--text-main);
-    font-family:'EB Garamond', serif;
-    font-size:16px;
-    line-height:1.7;
-    padding:16px 18px;
-    outline:none;
-    resize:vertical;
-    transition:border-color .2s, box-shadow .2s;
+    width:100%; min-height:110px; background:var(--bg-input); border:1px solid var(--line); border-radius:8px;
+    color:var(--text-main); font-family:'EB Garamond', serif; font-size:15px; line-height:1.6; padding:12px 14px;
+    outline:none; resize:vertical; transition:border-color .2s, box-shadow .2s;
   }
-  .notes-area:focus{
-    border-color:var(--moss-dim);
-    box-shadow:0 0 0 3px rgba(74,222,128,0.06);
-  }
-  .notes-area::placeholder{ color:var(--text-faint); }
+  .notes-area:focus{ border-color:var(--moss-dim); box-shadow:0 0 0 3px rgba(74,222,128,0.06); }
 
-  .editor-footer{
-    display:flex; justify-content:space-between; align-items:center;
-    margin-top:24px; padding-top:18px; border-top:1px solid var(--line);
-  }
-  .done-toggle{
-    display:flex; align-items:center; gap:8px;
-    font-family:'JetBrains Mono', monospace;
-    font-size:12px; color:var(--text-dim); cursor:pointer; user-select:none;
-  }
-  .done-toggle input{ accent-color:var(--moss); width:15px; height:15px; cursor:pointer; }
-
+  .modal-footer{ display:flex; justify-content:space-between; align-items:center; margin-top:18px; padding-top:14px; border-top:1px solid var(--line); }
+  .done-toggle{ display:flex; align-items:center; gap:7px; font-family:'JetBrains Mono', monospace; font-size:11.5px; color:var(--text-dim); cursor:pointer; user-select:none; }
+  .done-toggle input{ accent-color:var(--amber); width:15px; height:15px; cursor:pointer; }
   .delete-btn{
-    background:transparent;
-    border:1px solid #3a2420;
-    color:var(--danger);
-    font-family:'JetBrains Mono', monospace;
-    font-size:11.5px;
-    letter-spacing:1px;
-    padding:8px 14px;
-    border-radius:6px;
-    cursor:pointer;
-    transition:all .2s;
+    background:transparent; border:1px solid #3a2420; color:var(--danger); font-family:'JetBrains Mono', monospace;
+    font-size:11px; letter-spacing:.5px; padding:7px 12px; border-radius:6px; cursor:pointer; transition:all .2s;
   }
-  .delete-btn:hover{
-    background:rgba(201,106,90,0.1);
-    box-shadow:0 0 12px rgba(201,106,90,0.15);
+  .delete-btn:hover{ background:rgba(201,106,90,0.1); }
+
+  .hint{
+    position:relative; z-index:1; text-align:center; color:var(--text-faint);
+    font-size:12.5px; font-family:'JetBrains Mono', monospace; letter-spacing:.5px;
+    padding:0 20px 18px;
   }
 
-  /* ---------- empty state ---------- */
-  .empty-state{
-    margin:auto; text-align:center; color:var(--text-faint);
-    max-width:340px;
-  }
-  .empty-state .sigil{
-    font-size:38px; color:var(--moss-dim);
-    text-shadow:0 0 24px rgba(74,222,128,0.35);
-    margin-bottom:14px;
-  }
-  .empty-state h2{
-    font-family:'Cinzel', serif; font-size:16px; letter-spacing:2px;
-    color:var(--text-dim); font-weight:600; margin:0 0 10px;
-  }
-  .empty-state p{ font-size:14px; line-height:1.7; font-style:italic; margin:0; }
-
-  @media (max-width: 760px){
-    .app{ grid-template-columns:1fr; }
-    .sidebar{ display:none; }
-    .sidebar.show{ display:flex; position:fixed; inset:0; z-index:5; width:100%; }
-    .editor{ padding:24px 20px; }
+  @media (max-width:480px){
+    .brand h1{ display:none; }
     .field-row{ grid-template-columns:1fr; }
   }
 </style>
@@ -367,33 +210,31 @@
 <div class="canopy"></div>
 <div id="fireflies"></div>
 
-<div class="app">
-  <aside class="sidebar" id="sidebar">
-    <div class="brand">
-      <div class="glyph">🜃</div>
-      <h1>UNDERGROVE</h1>
-      <p>a ledger for the quiet hours</p>
-    </div>
-    <div class="sidebar-controls">
-      <div class="search-wrap">
-        <input type="text" id="search" placeholder="search the grove…" autocomplete="off">
-      </div>
-      <button class="new-btn" id="newEntry">✦ NEW ENTRY</button>
-    </div>
-    <div class="entries" id="entries"></div>
-  </aside>
+<div class="topbar">
+  <div class="brand"><span class="glyph">🜃</span><h1>UNDERGROVE</h1></div>
+  <div class="search-wrap">
+    <input type="text" id="search" placeholder="search the tree…" autocomplete="off">
+  </div>
+</div>
 
-  <main class="editor" id="editor"></main>
+<p class="hint">tap a leaf to open it · each new entry grows a new branch</p>
+
+<div class="canvas-wrap">
+  <svg id="treeSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+</div>
+
+<button class="fab" id="fab" aria-label="Plant a new leaf">✦</button>
+
+<div class="modal-overlay" id="overlay">
+  <div class="modal-card" id="modalCard"></div>
 </div>
 
 <script>
 (function(){
-  const STORAGE_KEY = "undergrove_entries_v1";
+  const STORAGE_KEY = "undergrove_entries_v2";
 
-  /* ---------- per-person storage ----------
-     Entries are saved under a personal key in this browser's localStorage,
-     so what one person writes here stays on their device and doesn't
-     mix with anyone else's. Nothing is sent anywhere. */
+  /* per-person storage: tied to a random id generated once in this browser,
+     so entries stay local to this device and this person only. */
   function getOwnerKey(){
     let owner = localStorage.getItem("undergrove_owner_id");
     if(!owner){
@@ -405,202 +246,210 @@
   const OWNER_KEY = getOwnerKey();
 
   function loadEntries(){
-    try{
-      const raw = localStorage.getItem(OWNER_KEY);
-      return raw ? JSON.parse(raw) : [];
-    }catch(e){ return []; }
+    try{ const raw = localStorage.getItem(OWNER_KEY); return raw ? JSON.parse(raw) : []; }
+    catch(e){ return []; }
   }
-  function saveEntries(entries){
-    localStorage.setItem(OWNER_KEY, JSON.stringify(entries));
-  }
+  function saveEntries(list){ localStorage.setItem(OWNER_KEY, JSON.stringify(list)); }
 
-  let entries = loadEntries();
+  let entries = loadEntries(); // chronological order = tree order (oldest at base)
   let activeId = null;
   let filterText = "";
 
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
-
-  function fmtDate(d){
-    if(!d) return "";
-    const dt = new Date(d + "T00:00:00");
-    if(isNaN(dt)) return d;
-    return dt.toLocaleDateString(undefined, { month:'short', day:'numeric' });
-  }
-
-  function groupLabel(d){
-    if(!d) return "UNDATED";
-    const today = new Date(); today.setHours(0,0,0,0);
-    const dt = new Date(d + "T00:00:00");
-    const diff = Math.round((dt - today) / 86400000);
-    if(diff === 0) return "TODAY";
-    if(diff === 1) return "TOMORROW";
-    if(diff === -1) return "YESTERDAY";
-    if(diff < 0) return "PAST";
-    return dt.toLocaleDateString(undefined, { weekday:'long', month:'short', day:'numeric' }).toUpperCase();
-  }
+  function hashCode(str){ let h=0; for(let i=0;i<str.length;i++){ h=(h*31+str.charCodeAt(i))>>>0; } return h; }
+  function escapeHtml(s){ return (s||"").replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function truncate(s, n){ s = s || "untitled leaf"; return s.length > n ? s.slice(0,n-1)+"…" : s; }
 
   /* ---------- fireflies ---------- */
   function spawnFireflies(){
     const host = document.getElementById("fireflies");
-    const n = 22;
-    for(let i=0;i<n;i++){
+    for(let i=0;i<20;i++){
       const f = document.createElement("div");
       f.className = "firefly";
       const size = 2 + Math.random()*2.5;
-      f.style.width = size+"px";
-      f.style.height = size+"px";
-      f.style.left = Math.random()*100+"vw";
-      f.style.top = Math.random()*100+"vh";
+      f.style.width = size+"px"; f.style.height = size+"px";
+      f.style.left = Math.random()*100+"vw"; f.style.top = Math.random()*100+"vh";
       f.style.setProperty("--dx", (Math.random()*160-80)+"px");
       f.style.setProperty("--dy", (Math.random()*160-80)+"px");
-      f.style.animationDuration = (14+Math.random()*16)+"s, " + (2.5+Math.random()*2)+"s";
-      f.style.animationDelay = (-Math.random()*20)+"s, " + (-Math.random()*3)+"s";
+      f.style.animationDuration = (14+Math.random()*16)+"s, "+(2.5+Math.random()*2)+"s";
+      f.style.animationDelay = (-Math.random()*20)+"s, "+(-Math.random()*3)+"s";
       host.appendChild(f);
     }
   }
 
-  /* ---------- render sidebar ---------- */
-  function render(){
-    const list = document.getElementById("entries");
+  /* ---------- tree layout ---------- */
+  const VBW = 900;
+  const TOP_MARGIN = 90;
+  const BOTTOM_MARGIN = 50;
+  const SPACING = 92;
+
+  function trunkWidthAt(t){ return 46 - t*32; } // t: 0 bottom -> 1 top
+  function trunkSway(y, height){ return Math.sin((height-y)*0.0055)*24; }
+
+  function buildLayout(list){
+    const height = Math.max(560, TOP_MARGIN + BOTTOM_MARGIN + list.length*SPACING + 40);
+    const centerBase = VBW/2;
+
+    function cx(y){ return centerBase + trunkSway(y, height); }
+    function w(y){
+      const t = Math.min(Math.max((height-BOTTOM_MARGIN-y)/(height-BOTTOM_MARGIN-TOP_MARGIN),0),1);
+      return trunkWidthAt(t);
+    }
+
+    const steps = 44;
+    const left = [], right = [];
+    for(let s=0;s<=steps;s++){
+      const y = (height-BOTTOM_MARGIN) - s*((height-BOTTOM_MARGIN-TOP_MARGIN)/steps);
+      left.push([cx(y)-w(y)/2, y]);
+      right.push([cx(y)+w(y)/2, y]);
+    }
+    let trunkPath = "M " + left.map(p=>p.join(",")).join(" L ");
+    trunkPath += " L " + right.slice().reverse().map(p=>p.join(",")).join(" L ") + " Z";
+
+    const branches = list.map((entry, i)=>{
+      const y = (height-BOTTOM_MARGIN) - (i+1)*SPACING + SPACING*0.45;
+      const centerX = cx(y);
+      const side = (i % 2 === 0) ? 1 : -1;
+      const seed = hashCode(entry.id);
+      const angleDeg = 32 + (seed % 20);
+      const length = 74 + (seed % 34);
+      const angleRad = angleDeg*Math.PI/180;
+      const startX = centerX + side*(w(y)/2 - 2);
+      const startY = y;
+      const endX = startX + side*Math.sin(angleRad)*length;
+      const endY = startY - Math.cos(angleRad)*length;
+      const ctrlX = (startX+endX)/2 + side*10;
+      const ctrlY = (startY+endY)/2 - 4;
+      return { entry, startX, startY, endX, endY, ctrlX, ctrlY, side, angleDeg: side*angleDeg };
+    });
+
+    return { width:VBW, height, trunkPath, branches };
+  }
+
+  /* ---------- render ---------- */
+  function matchesFilter(e){
     const q = filterText.trim().toLowerCase();
-    let filtered = entries.filter(e=>{
-      if(!q) return true;
-      return (e.title+" "+e.location+" "+e.notes).toLowerCase().includes(q);
-    });
-    filtered.sort((a,b)=>{
-      const da = a.date || "9999", db = b.date || "9999";
-      if(da !== db) return da < db ? -1 : 1;
-      const ta = a.time || "99:99", tb = b.time || "99:99";
-      return ta < tb ? -1 : 1;
-    });
-
-    if(filtered.length === 0){
-      list.innerHTML = `<div class="empty-list">${entries.length ? "no entries match your search" : "the grove is quiet.<br>plant your first entry above."}</div>`;
-    } else {
-      let html = "";
-      let lastGroup = null;
-      filtered.forEach(e=>{
-        const g = groupLabel(e.date);
-        if(g !== lastGroup){
-          html += `<div class="day-label">${g}</div>`;
-          lastGroup = g;
-        }
-        const metaBits = [];
-        if(e.time) metaBits.push(`<span>◷ ${e.time}</span>`);
-        if(e.location) metaBits.push(`<span>◎ ${escapeHtml(e.location)}</span>`);
-        html += `
-          <div class="entry-card ${e.id===activeId?'active':''} ${e.done?'done':''}" data-id="${e.id}">
-            <p class="entry-title">${escapeHtml(e.title) || "untitled entry"}</p>
-            <div class="entry-meta">${metaBits.join("")}</div>
-          </div>`;
-      });
-      list.innerHTML = html;
-    }
-
-    list.querySelectorAll(".entry-card").forEach(card=>{
-      card.addEventListener("click", ()=>{
-        activeId = card.getAttribute("data-id");
-        render();
-        renderEditor();
-      });
-    });
-
-    renderEditor();
+    if(!q) return true;
+    return (e.title+" "+e.location+" "+e.notes).toLowerCase().includes(q);
   }
 
-  function escapeHtml(s){
-    return (s||"").replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function render(){
+    const svg = document.getElementById("treeSvg");
+    const list = entries.filter(matchesFilter);
+    const layout = buildLayout(list);
+    svg.setAttribute("viewBox", `0 0 ${layout.width} ${layout.height}`);
+    svg.setAttribute("preserveAspectRatio", "xMidYMax meet");
+
+    let defs = `
+      <defs>
+        <radialGradient id="groundGlow" cx="50%" cy="100%" r="70%">
+          <stop offset="0%" stop-color="rgba(74,222,128,0.14)"/>
+          <stop offset="100%" stop-color="rgba(74,222,128,0)"/>
+        </radialGradient>
+      </defs>`;
+
+    let ground = `<ellipse cx="${layout.width/2}" cy="${layout.height-24}" rx="180" ry="26" fill="url(#groundGlow)"/>`;
+
+    let branchesSvg = layout.branches.map(b=>{
+      const strokeW = 5 + (hashCode(b.entry.id) % 4);
+      return `<path class="branch" d="M ${b.startX},${b.startY} Q ${b.ctrlX},${b.ctrlY} ${b.endX},${b.endY}" stroke-width="${strokeW}"/>`;
+    }).join("");
+
+    let leavesSvg = layout.branches.map((b,idx)=>{
+      const e = b.entry;
+      const done = e.done ? "done" : "";
+      const scale = 1.05 + (hashCode(e.id+"s") % 30)/100;
+      const dur = (3 + (hashCode(e.id+"d") % 20)/10).toFixed(1);
+      const delay = (-(hashCode(e.id+"e") % 30)/10).toFixed(1);
+      const labelY = b.endY - 34*scale - 10;
+      return `
+        <g class="leaf-group ${done}" data-id="${e.id}" tabindex="0" role="button"
+           style="animation-duration:${dur}s; animation-delay:${delay}s;">
+          <circle class="hit" cx="${b.endX}" cy="${b.endY - 16*scale}" r="26"/>
+          <g transform="translate(${b.endX},${b.endY}) rotate(${b.angleDeg}) scale(${scale})">
+            <path class="leaf-body" d="M0,-2 C -12,-14 -10,-32 0,-40 C 10,-32 12,-14 0,-2 Z"/>
+            <path class="leaf-vein" d="M0,-4 L0,-36"/>
+          </g>
+          <text class="leaf-label ${done}" x="${b.endX}" y="${labelY}">${escapeHtml(truncate(e.title, 16))}</text>
+        </g>`;
+    }).join("");
+
+    let emptyMsg = list.length === 0
+      ? `<text class="empty-note" x="${layout.width/2}" y="${layout.height - TOP_MARGIN - 60}">no leaves yet — press ✦ to plant one</text>`
+      : "";
+
+    svg.innerHTML = defs + ground
+      + `<path class="trunk" d="${layout.trunkPath}"/>`
+      + branchesSvg + leavesSvg + emptyMsg;
+
+    svg.querySelectorAll(".leaf-group").forEach(g=>{
+      g.addEventListener("click", ()=> openModal(g.getAttribute("data-id")));
+      g.addEventListener("keydown", (ev)=>{ if(ev.key==="Enter" || ev.key===" "){ ev.preventDefault(); openModal(g.getAttribute("data-id")); }});
+    });
   }
 
-  /* ---------- editor ---------- */
-  function renderEditor(){
-    const host = document.getElementById("editor");
-    const entry = entries.find(e=>e.id===activeId);
+  /* ---------- modal ---------- */
+  function openModal(id){
+    activeId = id;
+    const entry = entries.find(e=>e.id===id);
+    if(!entry) return;
+    const overlay = document.getElementById("overlay");
+    const card = document.getElementById("modalCard");
 
-    if(!entry){
-      host.innerHTML = `
-        <div class="empty-state">
-          <div class="sigil">✦</div>
-          <h2>NOTHING SELECTED</h2>
-          <p>Choose an entry from the grove, or plant a new one — a task, a time, a place — and it will take root here.</p>
-        </div>`;
-      return;
-    }
-
-    host.innerHTML = `
-      <input type="text" class="title-input" id="f-title" placeholder="untitled entry…" value="${escapeHtml(entry.title)}">
+    card.innerHTML = `
+      <div class="modal-top">
+        <input type="text" class="title-input" id="f-title" placeholder="untitled leaf…" value="${escapeHtml(entry.title)}">
+        <button class="close-btn" id="closeModal">✕</button>
+      </div>
       <div class="save-status" id="saveStatus">saved to this device</div>
 
       <div class="field-row">
-        <div class="field">
-          <label><span class="ic">◐</span>DATE</label>
-          <input type="date" id="f-date" value="${entry.date||''}">
-        </div>
-        <div class="field">
-          <label><span class="ic">◷</span>TIME</label>
-          <input type="time" id="f-time" value="${entry.time||''}">
-        </div>
-        <div class="field">
-          <label><span class="ic">◎</span>LOCATION</label>
-          <input type="text" id="f-location" placeholder="e.g. the old oak library" value="${escapeHtml(entry.location)}">
-        </div>
+        <div class="field"><label>Date</label><input type="date" id="f-date" value="${entry.date||''}"></div>
+        <div class="field"><label>Time</label><input type="time" id="f-time" value="${entry.time||''}"></div>
+        <div class="field full"><label>Location</label><input type="text" id="f-location" placeholder="e.g. the old oak library" value="${escapeHtml(entry.location)}"></div>
       </div>
 
-      <div class="vine-divider"></div>
-
-      <div class="notes-label">NOTES &amp; DETAILS</div>
+      <div class="notes-label">Notes &amp; details</div>
       <textarea class="notes-area" id="f-notes" placeholder="what needs doing, remembering, or tending to…">${escapeHtml(entry.notes)}</textarea>
 
-      <div class="editor-footer">
-        <label class="done-toggle">
-          <input type="checkbox" id="f-done" ${entry.done?'checked':''}>
-          mark as complete
-        </label>
-        <button class="delete-btn" id="deleteBtn">✕ REMOVE ENTRY</button>
+      <div class="modal-footer">
+        <label class="done-toggle"><input type="checkbox" id="f-done" ${entry.done?'checked':''}> mark as complete</label>
+        <button class="delete-btn" id="deleteBtn">✕ REMOVE LEAF</button>
       </div>
     `;
 
-    const fields = ["title","date","time","location","notes"];
-    fields.forEach(f=>{
+    ["title","date","time","location","notes"].forEach(f=>{
       document.getElementById("f-"+f).addEventListener("input", debounce(()=>{
         entry[f] = document.getElementById("f-"+f).value;
         persist();
-        refreshSidebarOnly();
+        render();
       }, 250));
     });
-
-    document.getElementById("f-done").addEventListener("change", (e)=>{
-      entry.done = e.target.checked;
-      persist();
-      render();
+    document.getElementById("f-done").addEventListener("change", (ev)=>{
+      entry.done = ev.target.checked; persist(); render();
     });
-
     document.getElementById("deleteBtn").addEventListener("click", ()=>{
-      if(confirm("Remove this entry from the grove? This cannot be undone.")){
-        entries = entries.filter(e2=>e2.id!==entry.id);
-        activeId = null;
-        persist();
-        render();
+      if(confirm("Remove this leaf from the tree? This cannot be undone.")){
+        entries = entries.filter(e=>e.id!==id);
+        persist(); closeModal(); render();
       }
     });
+    document.getElementById("closeModal").addEventListener("click", closeModal);
+
+    overlay.classList.add("show");
+    setTimeout(()=>{ const t=document.getElementById("f-title"); if(t) t.focus(); }, 200);
   }
 
-  function refreshSidebarOnly(){
-    const list = document.getElementById("entries");
-    // lightweight: just re-render list, keep focus in editor
-    const q = filterText;
-    const savedFocus = document.activeElement && document.activeElement.id;
-    render.call(null);
-    if(savedFocus){
-      const el = document.getElementById(savedFocus);
-      if(el){ el.focus(); const v=el.value; el.value=""; el.value=v; }
-    }
+  function closeModal(){
+    document.getElementById("overlay").classList.remove("show");
+    activeId = null;
   }
 
-  function debounce(fn, ms){
-    let t;
-    return (...args)=>{ clearTimeout(t); t = setTimeout(()=>fn(...args), ms); };
-  }
+  document.getElementById("overlay").addEventListener("click", (e)=>{
+    if(e.target.id === "overlay") closeModal();
+  });
+
+  function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
 
   function persist(){
     saveEntries(entries);
@@ -609,28 +458,21 @@
       status.textContent = "✓ saved to this device";
       status.classList.add("on");
       clearTimeout(persist._t);
-      persist._t = setTimeout(()=>{
-        if(status){ status.textContent = "saved to this device"; status.classList.remove("on"); }
-      }, 1400);
+      persist._t = setTimeout(()=>{ if(status){ status.textContent="saved to this device"; status.classList.remove("on"); } }, 1300);
     }
   }
 
-  /* ---------- controls ---------- */
-  document.getElementById("newEntry").addEventListener("click", ()=>{
-    const today = new Date();
-    const iso = today.toISOString().slice(0,10);
+  /* ---------- new entry ---------- */
+  document.getElementById("fab").addEventListener("click", ()=>{
+    const iso = new Date().toISOString().slice(0,10);
     const e = { id:uid(), title:"", date:iso, time:"", location:"", notes:"", done:false };
-    entries.unshift(e);
-    activeId = e.id;
+    entries.push(e);
     persist();
     render();
-    setTimeout(()=>{ const t=document.getElementById("f-title"); if(t) t.focus(); }, 30);
+    openModal(e.id);
   });
 
-  document.getElementById("search").addEventListener("input", (e)=>{
-    filterText = e.target.value;
-    render();
-  });
+  document.getElementById("search").addEventListener("input", (e)=>{ filterText = e.target.value; render(); });
 
   spawnFireflies();
   render();
