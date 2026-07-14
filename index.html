@@ -2,15 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Undergrove — a tree of your days</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg-deep: #050907;
-    --bg-panel: #0b120d;
-    --bg-input: #0d1712;
+    --bg-deep: #030604;
+    --bg-panel: rgba(11, 18, 13, 0.85);
+    --bg-input: rgba(13, 23, 18, 0.6);
     --line: #1c2e20;
     --line-glow: #2f5c3d;
     --moss: #4ade80;
@@ -18,601 +18,196 @@
     --moss-dim: #245234;
     --amber: #e0a94a;
     --amber-dim: #7a5a26;
-    --bark: #1c1712;
-    --bark-light: #1c1712;
-    --text-main: #d3e2d6;
-    --text-dim: #8ba394;
+    --bark: #1a1511;
+    --bark-light: #241c16;
+    --text-main: #e2ede4;
+    --text-dim: #9ab3a4;
     --text-faint: #4a5f52;
     --danger: #c96a5a;
   }
 
-  * {
-    box-sizing: border-box;
-    -webkit-tap-highlight-color: transparent;
-  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
   html, body {
-    height: 100%;
-    margin: 0;
+    height: 100%; margin: 0; background: var(--bg-deep);
+    color: var(--text-main); font-family: 'EB Garamond', serif;
+    overflow: hidden; /* Lock native scroll completely */
+    overscroll-behavior: none;
   }
 
-  body {
-    background: var(--bg-deep);
-    color: var(--text-main);
-    font-family: 'EB Garamond', serif;
-    overflow-x: hidden;
-  }
-
-  /* ---------- scrollbars ---------- */
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  ::-webkit-scrollbar-track {
-    background: var(--bg-deep);
-  }
-  ::-webkit-scrollbar-thumb {
-    background: var(--line-glow);
-    border-radius: 4px;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--moss-dim);
-  }
-
-  /* ---------- accessibility ---------- */
-  :focus-visible {
-    outline: 2px solid var(--moss);
-    outline-offset: 2px;
-    border-radius: 4px;
-  }
+  :focus-visible { outline: 2px solid var(--moss-soft); outline-offset: 2px; border-radius: 6px; }
 
   /* ---------- atmosphere ---------- */
   .canopy {
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 0;
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
     background:
-      radial-gradient(ellipse 60% 30% at 15% 0%, rgba(74,222,128,0.09), transparent 60%),
-      radial-gradient(ellipse 50% 25% at 85% 5%, rgba(74,222,128,0.06), transparent 60%),
-      radial-gradient(ellipse 80% 30% at 50% 100%, rgba(20,40,26,0.55), transparent 70%);
+      radial-gradient(ellipse 70% 40% at 15% 0%, rgba(74,222,128,0.07), transparent 60%),
+      radial-gradient(ellipse 60% 30% at 85% 5%, rgba(74,222,128,0.04), transparent 60%),
+      radial-gradient(ellipse 100% 40% at 50% 100%, rgba(20,40,26,0.6), transparent 70%);
   }
 
   .firefly {
-    position: fixed;
-    z-index: 0;
-    border-radius: 50%;
-    pointer-events: none;
-    background: var(--moss-soft);
-    box-shadow: 0 0 6px 2px rgba(124,240,163,0.7), 0 0 16px 6px rgba(74,222,128,0.22);
-    opacity: 0;
-    animation: drift linear infinite, glow 3.4s ease-in-out infinite;
+    position: fixed; z-index: 0; border-radius: 50%; pointer-events: none;
+    background: var(--moss-soft); box-shadow: 0 0 8px 2px rgba(124,240,163,0.6), 0 0 20px 6px rgba(74,222,128,0.15);
+    opacity: 0; animation: drift linear infinite, glow 3.4s ease-in-out infinite;
   }
-
-  @keyframes drift { 
-    0% { transform: translate(0,0); } 
-    100% { transform: translate(var(--dx), var(--dy)); } 
-  }
-  
-  @keyframes glow { 
-    0%, 100% { opacity: 0; } 
-    15%, 85% { opacity: .8; } 
-    50% { opacity: .3; } 
-  }
+  @keyframes drift { 0% { transform: translate(0,0); } 100% { transform: translate(var(--dx), var(--dy)); } }
+  @keyframes glow { 0%, 100% { opacity: 0; } 15%, 85% { opacity: .7; } 50% { opacity: .2; } }
 
   /* ---------- topbar ---------- */
   .topbar {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    background: linear-gradient(180deg, rgba(5,9,7,0.96), rgba(5,9,7,0.85));
-    border-bottom: 1px solid var(--line);
-    backdrop-filter: blur(6px);
+    position: absolute; top: 0; left: 0; right: 0; z-index: 10;
+    display: flex; align-items: center; gap: 16px; padding: 14px 20px;
+    background: linear-gradient(180deg, rgba(3,6,4,0.95) 0%, rgba(3,6,4,0.7) 100%);
+    border-bottom: 1px solid rgba(28, 46, 32, 0.5);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   }
 
-  .brand { 
-    display: flex; 
-    align-items: baseline; 
-    gap: 8px; 
-    flex-shrink: 0; 
-  }
-
-  .brand .glyph { 
-    font-size: 17px; 
-    color: var(--moss); 
-    text-shadow: 0 0 8px rgba(74,222,128,0.6); 
-  }
-
+  .brand { display: flex; align-items: baseline; gap: 10px; flex-shrink: 0; }
+  .brand .glyph { font-size: 18px; color: var(--moss); text-shadow: 0 0 12px rgba(74,222,128,0.5); }
   .brand h1 {
-    font-family: 'Cinzel', serif;
-    font-weight: 600;
-    font-size: 15px;
-    letter-spacing: 1.8px;
-    margin: 0;
-    color: var(--moss-soft);
-    text-shadow: 0 0 10px rgba(74,222,128,0.3);
-    white-space: nowrap;
+    font-family: 'Cinzel', serif; font-weight: 600; font-size: 16px; letter-spacing: 2px;
+    margin: 0; color: var(--moss-soft); text-shadow: 0 0 12px rgba(74,222,128,0.2);
   }
 
-  .search-wrap { 
-    position: relative; 
-    flex: 1; 
-    min-width: 0; 
-  }
-
+  .search-wrap { position: relative; flex: 1; min-width: 0; }
   .search-wrap input {
-    width: 100%;
-    background: var(--bg-input);
-    border: 1px solid var(--line);
-    color: var(--text-main);
-    font-family: 'EB Garamond', serif;
-    font-size: 14px;
-    padding: 9px 12px 9px 30px;
-    border-radius: 20px;
-    outline: none;
-    transition: border-color .2s, box-shadow .2s;
+    width: 100%; height: 42px; background: var(--bg-input); border: 1px solid var(--line);
+    color: var(--text-main); font-family: 'EB Garamond', serif; font-size: 16px;
+    padding: 0 16px 0 36px; border-radius: 24px; outline: none; transition: all .3s;
   }
-
-  .search-wrap input:focus { 
-    border-color: var(--moss-dim); 
-    box-shadow: 0 0 0 3px rgba(74,222,128,0.08); 
-  }
-
-  .search-wrap::before { 
-    content: "⌕"; 
-    position: absolute; 
-    left: 11px; 
-    top: 50%; 
-    transform: translateY(-50%); 
-    color: var(--text-faint); 
-    font-size: 14px; 
-  }
+  .search-wrap input:focus { border-color: var(--moss-dim); background: rgba(20, 36, 26, 0.7); box-shadow: 0 0 0 3px rgba(74,222,128,0.1); }
+  .search-wrap::before { content: "⌕"; position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-faint); font-size: 16px; }
 
   .wind-btn {
-    flex-shrink: 0;
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    background: var(--bg-input);
-    border: 1px solid var(--line);
-    color: var(--text-dim);
-    font-size: 16px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: border-color .2s, color .2s, box-shadow .2s;
+    flex-shrink: 0; width: 42px; height: 42px; border-radius: 50%;
+    background: var(--bg-input); border: 1px solid var(--line); color: var(--text-dim);
+    font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .2s;
   }
+  .wind-btn:hover { border-color: var(--moss-dim); color: var(--moss-soft); box-shadow: 0 0 14px rgba(74,222,128,0.15); transform: rotate(5deg); }
 
-  .wind-btn:hover { 
-    border-color: var(--moss-dim); 
-    color: var(--moss-soft); 
-    box-shadow: 0 0 10px rgba(74,222,128,0.15); 
-  }
-
-  /* ---------- canvas ---------- */
+  /* ---------- canvas (Pan/Zoom Engine) ---------- */
   .canvas-wrap {
-    position: relative;
-    z-index: 1;
-    padding: 10px 0 140px;
-    display: flex;
-    justify-content: center;
-    overflow-x: auto;
-    touch-action: pinch-zoom pan-x pan-y;
+    position: absolute; inset: 0; top: 71px; /* Account for topbar */
+    z-index: 1; overflow: hidden;
+    cursor: grab; touch-action: none; /* Disables all native touch-scrolling */
   }
+  .canvas-wrap:active { cursor: grabbing; }
+  
+  #zoomContainer {
+    position: absolute; top: 0; left: 0;
+    transform-origin: 0 0;
+    /* We add a transition here ONLY when we want to smoothly animate camera movement */
+    transition: transform 0s linear; 
+  }
+  #zoomContainer.smooth-cam { transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1); }
 
   .tree-glow {
-    position: absolute;
-    z-index: 0;
-    top: 6%;
-    left: 50%;
-    transform: translateX(-50%);
-    width: min(1100px, 130%);
-    height: 78%;
-    background: radial-gradient(ellipse 55% 45% at 50% 40%, rgba(180,255,205,0.16), rgba(124,240,163,0.08) 45%, transparent 72%);
-    filter: blur(6px);
-    pointer-events: none;
+    position: absolute; z-index: 0; top: 10%; left: 50%; transform: translateX(-50%);
+    width: 1500px; height: 800px;
+    background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(124,240,163,0.12), transparent 70%);
+    filter: blur(20px); pointer-events: none;
   }
-
-  #treeSvg { 
-    position: relative; 
-    z-index: 1; 
-    width: min(1400px, 100%); 
-    height: auto; 
-    display: block; 
-  }
+  
+  #treeSvg { position: relative; z-index: 1; display: block; }
 
   .trunk { fill: var(--bark); }
   .branch { fill: none; stroke: var(--bark-light); stroke-linecap: round; }
-  .twig { fill: none; stroke: var(--bark-light); stroke-linecap: round; opacity: .85; }
-  .bud { fill: var(--moss-dim); opacity: .55; }
+  .twig { fill: none; stroke: var(--bark-light); stroke-linecap: round; opacity: .9; }
+  
+  .leaf-group { cursor: pointer; animation: sway ease-in-out infinite; transform-box: fill-box; transform-origin: bottom center; }
+  .leaf-group .hit { fill: transparent; cursor: pointer; } 
+  .leaf-body { fill: var(--moss-dim); stroke: var(--moss); stroke-width: 1; filter: drop-shadow(0 2px 6px rgba(74,222,128,0.3)); transition: all .3s; }
+  .leaf-vein { stroke: rgba(3,8,5,0.6); stroke-width: 1; }
+  
+  .leaf-group:hover .leaf-body, .leaf-group:focus-visible .leaf-body { fill: var(--moss); filter: drop-shadow(0 0 12px rgba(124,240,163,0.9)); }
+  .leaf-group.done .leaf-body { fill: var(--amber-dim); stroke: var(--amber); filter: drop-shadow(0 2px 4px rgba(224,169,74,0.3)); }
+  .leaf-group.done:hover .leaf-body, .leaf-group.done:focus-visible .leaf-body { fill: var(--amber); filter: drop-shadow(0 0 12px rgba(224,169,74,0.8)); }
 
-  .leaf-group { 
-    cursor: pointer; 
-    animation: sway ease-in-out infinite; 
-    transform-box: fill-box; 
-    transform-origin: bottom center; 
-  }
-  
-  .leaf-group .hit { fill: transparent; }
-  
-  .leaf-body { 
-    fill: var(--moss-dim); 
-    stroke: var(--moss); 
-    stroke-width: 1; 
-    filter: drop-shadow(0 0 4px rgba(74,222,128,0.45)); 
-    transition: fill .3s, stroke .3s, filter .3s; 
-  }
-  
-  .leaf-vein { 
-    stroke: rgba(6,14,9,0.55); 
-    stroke-width: 1; 
-  }
-  
-  .leaf-group:hover .leaf-body, 
-  .leaf-group:focus-visible .leaf-body { 
-    fill: var(--moss); 
-    filter: drop-shadow(0 0 9px rgba(124,240,163,0.85)); 
-  }
-  
-  .leaf-group.done .leaf-body { 
-    fill: var(--amber-dim); 
-    stroke: var(--amber); 
-    filter: drop-shadow(0 0 4px rgba(224,169,74,0.4)); 
-  }
-  
-  .leaf-group.done:hover .leaf-body,
-  .leaf-group.done:focus-visible .leaf-body { 
-    fill: var(--amber); 
-    filter: drop-shadow(0 0 9px rgba(224,169,74,0.7)); 
-  }
+  @keyframes sway { 0%, 100% { transform: rotate(-2.5deg); } 50% { transform: rotate(2.5deg); } }
+  .leaf-group.new-leaf { animation: sprout 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards, sway ease-in-out infinite; }
+  @keyframes sprout { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 
-  @keyframes sway { 
-    0%, 100% { transform: rotate(-2.5deg); } 
-    50% { transform: rotate(2.5deg); } 
-  }
+  .mini-leaf { fill: var(--moss-dim); opacity: .6; stroke: var(--moss-dim); stroke-width: .5; }
 
-  /* Sprouting animation for new leaves */
-  .leaf-group.new-leaf {
-    animation: sprout 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, sway ease-in-out infinite;
-  }
-  
-  @keyframes sprout {
-    0% { transform: scale(0); opacity: 0; }
-    100% { transform: scale(1); opacity: 1; }
-  }
+  /* ---------- animations ---------- */
+  .wood-group { transition: transform 1.2s cubic-bezier(.55,.05,.7,.35), opacity 1.2s ease .3s; transform-box: view-box; }
+  .wood-group.topple { transform: rotate(78deg) translateY(12px); opacity: .1; }
+  .crack-line { stroke: var(--text-main); stroke-width: 1.5; opacity: 0; fill: none; }
+  .crack-line.flash { animation: crackFlash .5s ease-out forwards; }
+  @keyframes crackFlash { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; } }
+  @keyframes gustAway { 0% { transform: translate(0,0) rotate(0deg) scale(1); opacity: 1; } 100% { transform: translate(var(--gx), var(--gy)) rotate(var(--gr)) scale(0.5); opacity: 0; } }
+  .regrow { animation: regrowFade .8s ease .2s both; }
+  @keyframes regrowFade { 0% { opacity: 0; transform: scale(.9); } 100% { opacity: 1; transform: scale(1); } }
 
-  .mini-leaf { 
-    fill: var(--moss-dim); 
-    opacity: .55; 
-    stroke: var(--moss-dim); 
-    stroke-width: .5; 
-  }
-
-  /* ---------- wind / topple reset ---------- */
-  .wood-group {
-    transition: transform 1.05s cubic-bezier(.55,.05,.7,.35), opacity 1.05s ease .3s;
-    transform-box: view-box;
-  }
-  
-  .wood-group.topple { 
-    transform: rotate(78deg) translateY(6px); 
-    opacity: .15; 
-  }
-  
-  .crack-line { 
-    stroke: var(--text-main); 
-    stroke-width: 1.4; 
-    opacity: 0; 
-    fill: none; 
-  }
-  
-  .crack-line.flash { 
-    animation: crackFlash .5s ease-out forwards; 
-  }
-  
-  @keyframes crackFlash { 
-    0% { opacity: 0; } 
-    30% { opacity: .9; } 
-    100% { opacity: 0; } 
-  }
-  
-  @keyframes gustAway {
-    0% { transform: translate(0,0) rotate(0deg); opacity: 1; }
-    100% { transform: translate(var(--gx), var(--gy)) rotate(var(--gr)); opacity: 0; }
-  }
-  
-  .regrow { animation: regrowFade .7s ease .1s both; }
-  
-  @keyframes regrowFade { 
-    0% { opacity: 0; transform: scale(.85); } 
-    100% { opacity: 1; transform: scale(1); } 
-  }
-
-  .leaf-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    fill: var(--text-dim);
-    text-anchor: middle;
-    pointer-events: none;
-    letter-spacing: .3px;
-  }
-  
-  .leaf-label.done { 
-    fill: var(--amber); 
-    opacity: .75; 
-  }
-
-  .empty-note {
-    fill: var(--text-faint);
-    font-family: 'EB Garamond', serif;
-    font-style: italic;
-    font-size: 18px;
-    text-anchor: middle;
-  }
+  .leaf-label { font-family: 'JetBrains Mono', monospace; font-size: 13px; fill: var(--text-dim); text-anchor: middle; pointer-events: none; letter-spacing: .5px; font-weight: 500; }
+  .leaf-label.done { fill: var(--amber); opacity: .85; }
+  .empty-note { fill: var(--text-faint); font-family: 'EB Garamond', serif; font-style: italic; font-size: 20px; text-anchor: middle; letter-spacing: 1px; }
 
   /* ---------- FAB ---------- */
   .fab {
-    position: fixed;
-    right: 22px;
-    bottom: 26px;
-    z-index: 12;
-    width: 58px;
-    height: 58px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 35% 30%, #1d5a37, #0f2a19 70%);
-    border: 1px solid var(--moss-dim);
-    color: var(--moss-soft);
-    font-size: 26px;
-    font-family: 'EB Garamond', serif;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 0 18px rgba(74,222,128,0.28), 0 4px 14px rgba(0,0,0,0.5);
-    transition: transform .15s, box-shadow .2s;
+    position: fixed; right: 24px; bottom: 32px; z-index: 12;
+    width: 64px; height: 64px; border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #206940, #0f2a19 70%);
+    border: 1px solid var(--moss-dim); color: var(--moss-soft);
+    font-size: 28px; font-family: 'EB Garamond', serif; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,0.6), 0 0 20px rgba(74,222,128,0.25);
+    transition: transform .2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow .2s; animation: pulseFab 3s infinite alternate;
   }
-  
-  .fab:hover { 
-    transform: scale(1.06); 
-    box-shadow: 0 0 26px rgba(74,222,128,0.4), 0 4px 14px rgba(0,0,0,0.5); 
-  }
-  
-  .fab:active { 
-    transform: scale(.96); 
-  }
+  .fab:hover { transform: scale(1.1); animation: none; box-shadow: 0 12px 28px rgba(0,0,0,0.7), 0 0 30px rgba(74,222,128,0.4); }
+  .fab:active { transform: scale(.95); }
+  @keyframes pulseFab { 0% { box-shadow: 0 8px 24px rgba(0,0,0,0.6), 0 0 15px rgba(74,222,128,0.2); } 100% { box-shadow: 0 8px 24px rgba(0,0,0,0.6), 0 0 30px rgba(74,222,128,0.4); } }
 
   /* ---------- modal ---------- */
   .modal-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 20;
-    background: rgba(3,6,4,0.68);
-    backdrop-filter: blur(3px);
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity .2s;
+    position: fixed; inset: 0; z-index: 20; background: rgba(2, 4, 3, 0.75); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    display: flex; align-items: flex-end; justify-content: center; opacity: 0; pointer-events: none; transition: opacity .3s ease;
   }
-  
-  .modal-overlay.show { 
-    opacity: 1; 
-    pointer-events: auto; 
-  }
+  .modal-overlay.show { opacity: 1; pointer-events: auto; }
   
   .modal-card {
-    width: 100%;
-    max-width: 460px;
-    max-height: 88vh;
-    overflow-y: auto;
-    background: linear-gradient(180deg, var(--bg-panel), #08110b);
-    border: 1px solid var(--line-glow);
-    border-bottom: none;
-    border-radius: 18px 18px 0 0;
-    padding: 22px 22px 26px;
-    box-shadow: 0 -4px 30px rgba(0,0,0,0.6), 0 0 30px rgba(74,222,128,0.06);
-    transform: translateY(24px);
-    transition: transform .3s cubic-bezier(0.175, 0.885, 0.32, 1);
+    width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; background: var(--bg-panel);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(47, 92, 61, 0.4); border-bottom: none; border-radius: 28px 28px 0 0; padding: 24px 28px 32px;
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.8), 0 0 40px rgba(74,222,128,0.05); transform: translateY(100%); transition: transform .4s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
-  
-  .modal-overlay.show .modal-card { 
-    transform: translateY(0); 
-  }
-  
+  .modal-overlay.show .modal-card { transform: translateY(0); }
+  .drag-handle { width: 44px; height: 5px; background: rgba(139, 163, 148, 0.3); border-radius: 4px; margin: -10px auto 20px; }
+
   @media (min-width: 640px) {
-    .modal-overlay { align-items: center; }
-    .modal-card { border-radius: 16px; border-bottom: 1px solid var(--line-glow); }
+    .modal-overlay { align-items: center; padding: 20px; }
+    .modal-card { border-radius: 20px; border-bottom: 1px solid rgba(47, 92, 61, 0.4); transform: translateY(30px) scale(0.95); opacity: 0; }
+    .modal-overlay.show .modal-card { transform: translateY(0) scale(1); opacity: 1; }
+    .drag-handle { display: none; }
   }
 
-  .modal-top { 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: flex-start; 
-    gap: 10px; 
-    margin-bottom: 4px; 
-  }
-  
-  .close-btn {
-    background: none;
-    border: none;
-    color: var(--text-faint);
-    font-size: 20px;
-    cursor: pointer;
-    line-height: 1;
-    padding: 4px 6px;
-    flex-shrink: 0;
-    transition: color 0.2s;
-  }
-  
-  .close-btn:hover { 
-    color: var(--moss-soft); 
-  }
+  .modal-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 6px; }
+  .close-btn { background: rgba(255,255,255,0.05); border: 1px solid transparent; color: var(--text-dim); font-size: 20px; cursor: pointer; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; }
+  .close-btn:hover { background: rgba(74,222,128,0.1); color: var(--moss-soft); border-color: var(--moss-dim); }
+  .title-input { background: transparent; border: none; outline: none; color: var(--moss-soft); font-family: 'Cinzel', serif; font-weight: 600; font-size: 26px; letter-spacing: .5px; text-shadow: 0 0 16px rgba(74,222,128,0.25); width: 100%; padding: 0; }
+  .title-input::placeholder { color: rgba(139, 163, 148, 0.5); text-shadow: none; }
+  .save-status { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-bottom: 20px; min-height: 15px; transition: color 0.3s; }
+  .save-status.on { color: var(--moss); text-shadow: 0 0 8px rgba(74,222,128,0.4); }
 
-  .title-input {
-    background: transparent;
-    border: none;
-    outline: none;
-    color: var(--moss-soft);
-    font-family: 'Cinzel', serif;
-    font-weight: 600;
-    font-size: 24px;
-    letter-spacing: .5px;
-    text-shadow: 0 0 14px rgba(74,222,128,0.25);
-    width: 100%;
-    margin-bottom: 2px;
-  }
-  
-  .title-input::placeholder { 
-    color: var(--text-faint); 
-    text-shadow: none; 
-  }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; }
+  .field { display: flex; flex-direction: column; gap: 8px; } .field.full { grid-column: 1 / -1; }
+  .field label, .notes-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-dim); }
+  .field input { height: 46px; background: rgba(0,0,0,0.3); border: 1px solid var(--line); color: var(--text-main); font-family: 'EB Garamond', serif; font-size: 16px; padding: 0 14px; border-radius: 8px; outline: none; transition: all .2s; width: 100%; }
+  .field input:focus, .notes-area:focus { border-color: var(--moss-dim); box-shadow: 0 0 0 3px rgba(74,222,128,0.08); background: rgba(20, 36, 26, 0.4); }
+  .notes-area { width: 100%; min-height: 130px; background: rgba(0,0,0,0.3); border: 1px solid var(--line); border-radius: 10px; color: var(--text-main); font-family: 'EB Garamond', serif; font-size: 16px; line-height: 1.6; padding: 16px; outline: none; resize: vertical; transition: all .2s; margin-top: 8px; }
 
-  .save-status { 
-    font-family: 'JetBrains Mono', monospace; 
-    font-size: 10.5px; 
-    color: var(--text-faint); 
-    margin-bottom: 16px; 
-    min-height: 13px;
-    transition: color 0.3s;
-  }
-  
-  .save-status.on { color: var(--moss); }
+  .modal-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(28, 46, 32, 0.6); }
+  .done-toggle { display: flex; align-items: center; gap: 10px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--text-dim); cursor: pointer; user-select: none; }
+  .done-toggle input { accent-color: var(--amber); width: 18px; height: 18px; cursor: pointer; }
+  .delete-btn { background: transparent; border: 1px solid rgba(201,106,90,0.3); color: var(--danger); font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: .5px; padding: 10px 16px; border-radius: 8px; cursor: pointer; transition: all .2s; }
+  .delete-btn:hover { background: rgba(201,106,90,0.15); border-color: var(--danger); }
 
-  .field-row { 
-    display: grid; 
-    grid-template-columns: 1fr 1fr; 
-    gap: 12px; 
-    margin-bottom: 14px; 
-  }
-  
-  .field { 
-    display: flex; 
-    flex-direction: column; 
-    gap: 5px; 
-  }
-  
-  .field.full { grid-column: 1 / -1; }
-  
-  .field label { 
-    font-family: 'JetBrains Mono', monospace; 
-    font-size: 10px; 
-    letter-spacing: 1.3px; 
-    text-transform: uppercase; 
-    color: var(--text-dim); 
-  }
-  
-  .field input {
-    background: var(--bg-input);
-    border: 1px solid var(--line);
-    color: var(--text-main);
-    font-family: 'EB Garamond', serif;
-    font-size: 15px;
-    padding: 8px 10px;
-    border-radius: 6px;
-    outline: none;
-    transition: border-color .2s, box-shadow .2s;
-    width: 100%;
-  }
-  
-  .field input:focus { 
-    border-color: var(--moss-dim); 
-    box-shadow: 0 0 0 3px rgba(74,222,128,0.08); 
-  }
-
-  .notes-label { 
-    font-family: 'JetBrains Mono', monospace; 
-    font-size: 10px; 
-    letter-spacing: 1.3px; 
-    text-transform: uppercase; 
-    color: var(--text-dim); 
-    margin-bottom: 6px; 
-  }
-  
-  .notes-area {
-    width: 100%;
-    min-height: 110px;
-    background: var(--bg-input);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    color: var(--text-main);
-    font-family: 'EB Garamond', serif;
-    font-size: 15px;
-    line-height: 1.6;
-    padding: 12px 14px;
-    outline: none;
-    resize: vertical;
-    transition: border-color .2s, box-shadow .2s;
-  }
-  
-  .notes-area:focus { 
-    border-color: var(--moss-dim); 
-    box-shadow: 0 0 0 3px rgba(74,222,128,0.06); 
-  }
-
-  .modal-footer { 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-    margin-top: 18px; 
-    padding-top: 14px; 
-    border-top: 1px solid var(--line); 
-  }
-  
-  .done-toggle { 
-    display: flex; 
-    align-items: center; 
-    gap: 7px; 
-    font-family: 'JetBrains Mono', monospace; 
-    font-size: 11.5px; 
-    color: var(--text-dim); 
-    cursor: pointer; 
-    user-select: none; 
-  }
-  
-  .done-toggle input { 
-    accent-color: var(--amber); 
-    width: 15px; 
-    height: 15px; 
-    cursor: pointer; 
-  }
-  
-  .delete-btn {
-    background: transparent;
-    border: 1px solid #3a2420;
-    color: var(--danger);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    letter-spacing: .5px;
-    padding: 7px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all .2s;
-  }
-  
-  .delete-btn:hover { 
-    background: rgba(201,106,90,0.1); 
-  }
-
-  .hint {
-    position: relative;
-    z-index: 1;
-    text-align: center;
-    color: var(--text-faint);
-    font-size: 12.5px;
-    font-family: 'JetBrains Mono', monospace;
-    letter-spacing: .5px;
-    padding: 0 20px 18px;
-  }
+  .hint-overlay { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10; color: var(--text-faint); font-size: 13px; font-family: 'JetBrains Mono', monospace; pointer-events: none; text-align: center; }
 
   @media (max-width: 480px) {
-    .brand h1 { display: none; }
-    .field-row { grid-template-columns: 1fr; }
+    .brand h1 { display: none; } .field-row { grid-template-columns: 1fr; gap: 12px; }
+    .topbar { padding: 12px 16px; gap: 12px; } .fab { bottom: 24px; right: 20px; width: 56px; height: 56px; font-size: 24px; }
+    .modal-card { padding: 24px 20px 32px; }
   }
 </style>
 </head>
@@ -623,18 +218,19 @@
 
 <div class="topbar">
   <div class="brand"><span class="glyph">🜃</span><h1>UNDERGROVE</h1></div>
-  <div class="search-wrap">
-    <input type="text" id="search" placeholder="search the tree…" autocomplete="off">
-  </div>
+  <div class="search-wrap"><input type="text" id="search" placeholder="Search the tree…" autocomplete="off"></div>
   <button class="wind-btn" id="clearAll" aria-label="Clear the grove" title="Let the wind take every leaf">💨</button>
 </div>
 
-<p class="hint">tap a leaf to open it · each new entry grows a new branch</p>
-
-<div class="canvas-wrap">
-  <div class="tree-glow"></div>
-  <svg id="treeSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+<!-- Custom Map Engine Canvas -->
+<div class="canvas-wrap" id="canvasWrap">
+  <div id="zoomContainer">
+    <div class="tree-glow"></div>
+    <svg id="treeSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+  </div>
 </div>
+
+<div class="hint-overlay">pinch to zoom · drag to pan</div>
 
 <button class="fab" id="fab" aria-label="Plant a new leaf">✦</button>
 
@@ -644,230 +240,208 @@
 
 <script>
 (function() {
-  const STORAGE_KEY = "undergrove_entries_v2";
+  const STORAGE_KEY = "undergrove_entries_v3";
 
-  /* Per-person storage: tied to a random id generated once in this browser */
   function getOwnerKey() {
     let owner = localStorage.getItem("undergrove_owner_id");
-    if (!owner) {
-      owner = "wanderer-" + Math.random().toString(36).slice(2, 8);
-      localStorage.setItem("undergrove_owner_id", owner);
-    }
+    if (!owner) { owner = "wanderer-" + Math.random().toString(36).slice(2, 8); localStorage.setItem("undergrove_owner_id", owner); }
     return STORAGE_KEY + "_" + owner;
   }
-  
   const OWNER_KEY = getOwnerKey();
 
-  function loadEntries() {
-    try { 
-      const raw = localStorage.getItem(OWNER_KEY); 
-      return raw ? JSON.parse(raw) : []; 
-    } catch(e) { 
-      return []; 
-    }
-  }
-
-  function saveEntries(list) { 
-    localStorage.setItem(OWNER_KEY, JSON.stringify(list)); 
-  }
+  function loadEntries() { try { const raw = localStorage.getItem(OWNER_KEY); return raw ? JSON.parse(raw) : []; } catch(e) { return []; } }
+  function saveEntries(list) { localStorage.setItem(OWNER_KEY, JSON.stringify(list)); }
 
   let entries = loadEntries();
-  let activeId = null;
-  let filterText = "";
-  let lastLayout = null;
-  let newLeafId = null; // Track newly planted leaf for animation
+  let activeId = null, filterText = "", lastLayout = null, newLeafId = null, hasAutoCentered = false;
 
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
-  function hashCode(str) { 
-    let h = 0; 
-    for (let i = 0; i < str.length; i++) { h = (h * 31 + str.charCodeAt(i)) >>> 0; } 
-    return h; 
+  function hashCode(str) { let h = 0; for (let i = 0; i < str.length; i++) { h = (h * 31 + str.charCodeAt(i)) >>> 0; } return h; }
+  function escapeHtml(s) { return (s || "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function truncate(s, n) { s = s || "Untitled leaf"; return s.length > n ? s.slice(0, n - 1) + "…" : s; }
+
+  /* ---------- PAN / ZOOM ENGINE ---------- */
+  const wrap = document.getElementById('canvasWrap');
+  const zoomEl = document.getElementById('zoomContainer');
+  let scale = 1, panX = 0, panY = 0;
+  let isDragging = false, startX = 0, startY = 0;
+  let initialPinchDist = null, initialScale = 1;
+  let clickStartX = 0, clickStartY = 0;
+
+  function updateTransform(smooth = false) {
+    if (smooth) zoomEl.classList.add('smooth-cam');
+    else zoomEl.classList.remove('smooth-cam');
+    zoomEl.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+    if (smooth) setTimeout(() => zoomEl.classList.remove('smooth-cam'), 600);
   }
-  function escapeHtml(s) { 
-    return (s || "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); 
+
+  function centerTree(layout, smooth = false) {
+    const wrapRect = wrap.getBoundingClientRect();
+    // Calculate a good zoom level to fit the tree vertically, with min/max caps
+    const scaleY = (wrapRect.height * 0.8) / layout.height;
+    scale = Math.min(Math.max(0.4, scaleY), 1.2);
+    // Center trunk horizontally, place ground near the bottom
+    panX = (wrapRect.width / 2) - (layout.width / 2) * scale;
+    panY = wrapRect.height - layout.height * scale - 60; 
+    updateTransform(smooth);
   }
-  function truncate(s, n) { 
-    s = s || "untitled leaf"; 
-    return s.length > n ? s.slice(0, n - 1) + "…" : s; 
+
+  function panToNode(x, y) {
+    const wrapRect = wrap.getBoundingClientRect();
+    scale = Math.max(scale, 0.9); // zoom in a bit if zoomed out
+    panX = (wrapRect.width / 2) - x * scale;
+    panY = (wrapRect.height / 2) - y * scale;
+    updateTransform(true);
   }
+
+  // Mouse Drag
+  wrap.addEventListener('mousedown', e => {
+    isDragging = true; clickStartX = e.clientX; clickStartY = e.clientY;
+    startX = e.clientX - panX; startY = e.clientY - panY;
+  });
+  window.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    panX = e.clientX - startX; panY = e.clientY - startY; updateTransform();
+  });
+  window.addEventListener('mouseup', () => { isDragging = false; });
+  
+  // Mouse Wheel (Zoom)
+  wrap.addEventListener('wheel', e => {
+    e.preventDefault();
+    const zoomSensitivity = 0.0015; const delta = -e.deltaY * zoomSensitivity;
+    let newScale = Math.min(Math.max(0.2, scale + delta), 3.5);
+    const rect = wrap.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left; const mouseY = e.clientY - rect.top;
+    panX = mouseX - (mouseX - panX) * (newScale / scale);
+    panY = mouseY - (mouseY - panY) * (newScale / scale);
+    scale = newScale; updateTransform();
+  }, {passive: false});
+
+  // Touch Pan/Pinch
+  wrap.addEventListener('touchstart', e => {
+    if (e.touches.length === 1) {
+      isDragging = true; clickStartX = e.touches[0].clientX; clickStartY = e.touches[0].clientY;
+      startX = e.touches[0].clientX - panX; startY = e.touches[0].clientY - panY;
+    } else if (e.touches.length === 2) {
+      isDragging = false; initialScale = scale;
+      initialPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    }
+  }, {passive: false});
+
+  wrap.addEventListener('touchmove', e => {
+    e.preventDefault(); // crucial to stop native mobile behavior
+    if (e.touches.length === 1 && isDragging) {
+      panX = e.touches[0].clientX - startX; panY = e.touches[0].clientY - startY; updateTransform();
+    } else if (e.touches.length === 2) {
+      const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      let newScale = Math.min(Math.max(0.2, initialScale * (dist / initialPinchDist)), 3.5);
+      panX = centerX - (centerX - panX) * (newScale / scale);
+      panY = centerY - (centerY - panY) * (newScale / scale);
+      scale = newScale; updateTransform();
+    }
+  }, {passive: false});
+
+  wrap.addEventListener('touchend', e => {
+    if (e.touches.length < 2) initialPinchDist = null;
+    if (e.touches.length === 1) { isDragging = true; startX = e.touches[0].clientX - panX; startY = e.touches[0].clientY - panY; } 
+    else if (e.touches.length === 0) { isDragging = false; }
+  });
+
+  wrap.addEventListener('contextmenu', e => e.preventDefault()); // Stop right click/long press
 
   /* ---------- fireflies ---------- */
   function spawnFireflies() {
     const host = document.getElementById("fireflies");
-    for (let i = 0; i < 20; i++) {
-      const f = document.createElement("div");
-      f.className = "firefly";
-      const size = 2 + Math.random() * 2.5;
-      f.style.width = size + "px"; 
-      f.style.height = size + "px";
-      f.style.left = Math.random() * 100 + "vw"; 
-      f.style.top = Math.random() * 100 + "vh";
-      f.style.setProperty("--dx", (Math.random() * 160 - 80) + "px");
-      f.style.setProperty("--dy", (Math.random() * 160 - 80) + "px");
-      f.style.animationDuration = (14 + Math.random() * 16) + "s, " + (2.5 + Math.random() * 2) + "s";
+    for (let i = 0; i < 24; i++) {
+      const f = document.createElement("div"); f.className = "firefly";
+      const size = 2 + Math.random() * 3; f.style.width = size + "px"; f.style.height = size + "px";
+      f.style.left = Math.random() * 100 + "vw"; f.style.top = Math.random() * 100 + "vh";
+      f.style.setProperty("--dx", (Math.random() * 200 - 100) + "px"); f.style.setProperty("--dy", (Math.random() * 200 - 100) + "px");
+      f.style.animationDuration = (12 + Math.random() * 18) + "s, " + (2.5 + Math.random() * 2.5) + "s";
       f.style.animationDelay = (-Math.random() * 20) + "s, " + (-Math.random() * 3) + "s";
       host.appendChild(f);
     }
   }
 
   /* ---------- tree layout ---------- */
-  const BASE_VBW = 1040;
-  const BASE_VBH = 640;
-  const GROUND_MARGIN = 46;
+  const BASE_VBW = 1200, BASE_VBH = 700, GROUND_MARGIN = 56;
+  const LIMBS = [ { angle: -92, baseLen: 160 }, { angle: -52, baseLen: 200 }, { angle: -14, baseLen: 220 }, { angle: 22, baseLen: 205 }, { angle: 58, baseLen: 175 }, { angle: 104, baseLen: 150 } ];
 
-  const LIMBS = [
-    { angle: -92, baseLen: 150 },
-    { angle: -52, baseLen: 190 },
-    { angle: -14, baseLen: 210 },
-    { angle: 22, baseLen: 195 },
-    { angle: 58, baseLen: 165 },
-    { angle: 104, baseLen: 140 },
-  ];
-
-  function rotVec(x, y, theta) {
-    const c = Math.cos(theta), s = Math.sin(theta);
-    return [x * c - y * s, x * s + y * c];
-  }
-
+  function rotVec(x, y, theta) { const c = Math.cos(theta), s = Math.sin(theta); return [x * c - y * s, x * s + y * c]; }
   function bezierPoint(p0, c, p1, t) {
-    const x = (1 - t) * (1 - t) * p0[0] + 2 * (1 - t) * t * c[0] + t * t * p1[0];
-    const y = (1 - t) * (1 - t) * p0[1] + 2 * (1 - t) * t * c[1] + t * t * p1[1];
-    const dx = 2 * (1 - t) * (c[0] - p0[0]) + 2 * t * (p1[0] - c[0]);
-    const dy = 2 * (1 - t) * (c[1] - p0[1]) + 2 * t * (p1[1] - c[1]);
-    const len = Math.hypot(dx, dy) || 1;
-    return { x, y, tx: dx / len, ty: dy / len };
+    const x = (1-t)*(1-t)*p0[0] + 2*(1-t)*t*c[0] + t*t*p1[0], y = (1-t)*(1-t)*p0[1] + 2*(1-t)*t*c[1] + t*t*p1[1];
+    const dx = 2*(1-t)*(c[0]-p0[0]) + 2*t*(p1[0]-c[0]), dy = 2*(1-t)*(c[1]-p0[1]) + 2*t*(p1[1]-c[1]);
+    return { x, y, tx: dx / (Math.hypot(dx, dy) || 1), ty: dy / (Math.hypot(dx, dy) || 1) };
   }
-
-  function getSortedEntries(list) {
-    // Sort chronologically so the physical tree perfectly reflects the timeline.
-    return [...list].sort((a, b) => {
-      const dateA = new Date(a.date + 'T' + (a.time || '00:00')).getTime() || 0;
-      const dateB = new Date(b.date + 'T' + (b.time || '00:00')).getTime() || 0;
-      return dateA - dateB;
-    });
-  }
+  function getSortedEntries(list) { return [...list].sort((a, b) => (new Date(a.date + 'T' + (a.time || '00:00')).getTime() || 0) - (new Date(b.date + 'T' + (b.time || '00:00')).getTime() || 0)); }
 
   function buildLayout(list) {
-    const scale = 1 + Math.min(0.65, list.length * 0.018);
-    const vbw = BASE_VBW + Math.min(640, list.length * 22);
-    const vbh = BASE_VBH + Math.min(200, list.length * 5);
-    const groundY = vbh - GROUND_MARGIN;
-    const trunkHeight = Math.min(160, 100 + list.length * 1.1) * (0.9 + scale * 0.1);
-    const trunkTopX = vbw / 2;
-    const trunkTopY = groundY - trunkHeight;
+    const lScale = 1 + Math.min(0.7, list.length * 0.02);
+    const vbw = BASE_VBW + Math.min(800, list.length * 26), vbh = BASE_VBH + Math.min(250, list.length * 6);
+    const groundY = vbh - GROUND_MARGIN, trunkTopX = vbw / 2, trunkHeight = Math.min(180, 110 + list.length * 1.2) * (0.9 + lScale * 0.1), trunkTopY = groundY - trunkHeight;
 
-    const steps = 16, tLeft = [], tRight = [];
-    for (let s = 0; s <= steps; s++) {
-      const f = s / steps;
-      const y = groundY - f * trunkHeight;
-      const wgt = (1 - f);
-      const halfw = (16 + wgt * 20);
-      const sway = Math.sin(f * Math.PI * 0.6) * 6;
-      tLeft.push([trunkTopX - halfw + sway, y]);
-      tRight.push([trunkTopX + halfw + sway, y]);
+    const tLeft = [], tRight = [];
+    for (let s = 0; s <= 18; s++) {
+      const f = s / 18, y = groundY - f * trunkHeight, wgt = (1 - f), halfw = (18 + wgt * 24), sway = Math.sin(f * Math.PI * 0.6) * 7;
+      tLeft.push([trunkTopX - halfw + sway, y]); tRight.push([trunkTopX + halfw + sway, y]);
     }
-    
-    let trunkPath = "M " + tLeft.map(p => p.join(",")).join(" L ") + 
-                    " L " + tRight.slice().reverse().map(p => p.join(",")).join(" L ") + " Z";
+    let trunkPath = "M " + tLeft.map(p => p.join(",")).join(" L ") + " L " + tRight.slice().reverse().map(p => p.join(",")).join(" L ") + " Z";
 
-    const sortedList = getSortedEntries(list);
-    const perLimb = LIMBS.map(() => []);
-    
-    // Spread entries across limbs based on their chronological order
-    sortedList.forEach((entry, i) => perLimb[i % LIMBS.length].push(entry));
+    const sortedList = getSortedEntries(list), perLimb = LIMBS.map(() => []);
+    sortedList.forEach((e, i) => perLimb[i % LIMBS.length].push(e));
+
+    let maxNodeY = trunkTopY;
 
     const limbs = LIMBS.map((limb, li) => {
-      const angleRad = limb.angle * Math.PI / 180;
-      const u = [Math.sin(angleRad), -Math.cos(angleRad)];
-      const perp = [Math.cos(angleRad), Math.sin(angleRad)];
-      const baseLen = limb.baseLen * scale;
-      const spacing = 62 * scale;
+      const angleRad = limb.angle * Math.PI / 180, u = [Math.sin(angleRad), -Math.cos(angleRad)], perp = [Math.cos(angleRad), Math.sin(angleRad)];
+      const baseLen = limb.baseLen * lScale, spacing = 65 * lScale;
+      function centerAt(d) { const sway = Math.sin(d * 0.018 + li * 1.7) * 10 * lScale; return [trunkTopX + u[0] * d + perp[0] * sway, trunkTopY + u[1] * d + perp[1] * sway]; }
 
-      function centerAt(d) {
-        const sway = Math.sin(d * 0.018 + li * 1.7) * 9 * scale;
-        return [trunkTopX + u[0] * d + perp[0] * sway, trunkTopY + u[1] * d + perp[1] * sway];
-      }
+      const branches = []; let maxD = baseLen * 0.4;
+      perLimb[li].forEach((entry, j) => {
+        const d = baseLen * 0.4 + (j + 1) * spacing; maxD = Math.max(maxD, d + 48);
+        const [px, py] = centerAt(d), seed = hashCode(entry.id), side = (j % 2 === 0) ? 1 : -1;
+        const branchAngle = (30 + (seed % 26)) * Math.PI / 180, branchLen = (62 + (seed % 30)) * lScale;
+        const [bx, by] = rotVec(u[0], u[1], side * branchAngle), endX = px + bx * branchLen, endY = py + by * branchLen;
+        const ctrlX = (px + endX) / 2 + perp[0] * side * 14, ctrlY = (py + endY) / 2 + perp[1] * side * 14;
+        
+        maxNodeY = Math.min(maxNodeY, endY);
 
-      const branches = [];
-      let maxD = baseLen * 0.4;
-      const myEntries = perLimb[li];
-      
-      myEntries.forEach((entry, j) => {
-        const d = baseLen * 0.4 + (j + 1) * spacing;
-        maxD = Math.max(maxD, d + 46);
-        const [px, py] = centerAt(d);
-        const seed = hashCode(entry.id);
-        const side = (j % 2 === 0) ? 1 : -1;
-        const branchAngle = (30 + (seed % 26)) * Math.PI / 180;
-        const branchLen = (58 + (seed % 30)) * scale;
-        const [bx, by] = rotVec(u[0], u[1], side * branchAngle);
-        const endX = px + bx * branchLen, endY = py + by * branchLen;
-        const ctrlX = (px + endX) / 2 + perp[0] * side * 12;
-        const ctrlY = (py + endY) / 2 + perp[1] * side * 12;
-        const leafAngleDeg = Math.atan2(bx, -by) * 180 / Math.PI;
-
-        const twigs = [];
-        const twigCount = 1 + (seed % 3);
+        const twigs = []; const twigCount = 1 + (seed % 3);
         for (let k = 0; k < twigCount; k++) {
-          const t = 0.35 + ((seed >> (k + 2)) % 34) / 100;
-          const p = bezierPoint([px, py], [ctrlX, ctrlY], [endX, endY], t);
-          const twigSide = (k % 2 === 0) ? side : -side;
-          const twigAngle = (26 + ((seed >> (k + 4)) % 22)) * Math.PI / 180;
-          const twigLen = (20 + ((seed >> (k + 1)) % 20)) * scale;
-          const baseAngle = Math.atan2(p.tx, -p.ty);
-          const dir = baseAngle + twigSide * twigAngle;
-          twigs.push({ 
-            x1: p.x, y1: p.y, 
-            x2: p.x + Math.sin(dir) * twigLen, 
-            y2: p.y - Math.cos(dir) * twigLen, 
-            angle: dir * 180 / Math.PI 
-          });
+          const t = 0.35 + ((seed >> (k + 2)) % 34) / 100, p = bezierPoint([px, py], [ctrlX, ctrlY], [endX, endY], t);
+          const twigSide = (k % 2 === 0) ? side : -side, twigAngle = (26 + ((seed >> (k + 4)) % 22)) * Math.PI / 180;
+          const twigLen = (22 + ((seed >> (k + 1)) % 20)) * lScale, baseAngle = Math.atan2(p.tx, -p.ty), dir = baseAngle + twigSide * twigAngle;
+          twigs.push({ x1: p.x, y1: p.y, x2: p.x + Math.sin(dir) * twigLen, y2: p.y - Math.cos(dir) * twigLen, angle: dir * 180 / Math.PI });
         }
-
-        branches.push({ entry, startX: px, startY: py, endX, endY, ctrlX, ctrlY, angleDeg: leafAngleDeg, twigs });
+        branches.push({ entry, startX: px, startY: py, endX, endY, ctrlX, ctrlY, angleDeg: Math.atan2(bx, -by) * 180 / Math.PI, twigs });
       });
 
-      const limbLen = Math.max(baseLen, maxD + 24);
-
-      const lsteps = 22, lLeft = [], lRight = [];
+      const limbLen = Math.max(baseLen, maxD + 26), lsteps = 24, lLeft = [], lRight = [];
       for (let s = 0; s <= lsteps; s++) {
-        const d = (s / lsteps) * limbLen;
-        const f = d / limbLen;
-        const halfw = (13 - f * 9) * scale;
-        const [cx, cy] = centerAt(d);
-        lLeft.push([cx - perp[0] * halfw, cy - perp[1] * halfw]);
-        lRight.push([cx + perp[0] * halfw, cy + perp[1] * halfw]);
+        const d = (s / lsteps) * limbLen, f = d / limbLen, halfw = (14 - f * 10) * lScale, [cx, cy] = centerAt(d);
+        lLeft.push([cx - perp[0] * halfw, cy - perp[1] * halfw]); lRight.push([cx + perp[0] * halfw, cy + perp[1] * halfw]);
       }
-      const limbPath = "M " + lLeft.map(p => p.join(",")).join(" L ") + 
-                       " L " + lRight.slice().reverse().map(p => p.join(",")).join(" L ") + " Z";
+      const limbPath = "M " + lLeft.map(p => p.join(",")).join(" L ") + " L " + lRight.slice().reverse().map(p => p.join(",")).join(" L ") + " Z";
 
-      const fillerTwigs = [];
-      const usedD = branches.map((b, j) => baseLen * 0.4 + (j + 1) * spacing);
-      for (let d = baseLen * 0.2; d < limbLen - 16; d += 22 * scale) {
-        const near = usedD.some(ud => Math.abs(ud - d) < 18);
-        const seed = hashCode("filler-" + li + "-" + Math.round(d));
-        if (near || seed % 6 === 0) continue;
-        const [cx, cy] = centerAt(d);
-        const side = (seed % 2 === 0) ? 1 : -1;
-        const fAngle = (34 + (seed % 26)) * Math.PI / 180;
-        const fLen = (14 + (seed % 16)) * scale;
-        const [fx, fy] = rotVec(u[0], u[1], side * fAngle);
-        const angle = Math.atan2(fx, -fy) * 180 / Math.PI;
-        fillerTwigs.push({ x1: cx, y1: cy, x2: cx + fx * fLen, y2: cy + fy * fLen, angle });
+      const fillerTwigs = []; const usedD = branches.map((b, j) => baseLen * 0.4 + (j + 1) * spacing);
+      for (let d = baseLen * 0.2; d < limbLen - 18; d += 24 * lScale) {
+        if (usedD.some(ud => Math.abs(ud - d) < 20) || hashCode("filler-" + li + "-" + Math.round(d)) % 6 === 0) continue;
+        const [cx, cy] = centerAt(d), seed = hashCode("filler-" + li + "-" + Math.round(d)), side = (seed % 2 === 0) ? 1 : -1;
+        const fAngle = (34 + (seed % 26)) * Math.PI / 180, fLen = (16 + (seed % 16)) * lScale, [fx, fy] = rotVec(u[0], u[1], side * fAngle);
+        fillerTwigs.push({ x1: cx, y1: cy, x2: cx + fx * fLen, y2: cy + fy * fLen, angle: Math.atan2(fx, -fy) * 180 / Math.PI });
       }
-
       return { path: limbPath, branches, fillerTwigs };
     });
 
-    return { width: vbw, height: vbh, groundY, trunkTopX, trunkPath, limbs };
+    // Auto adjust height bounding
+    const finalVBH = Math.max(BASE_VBH, groundY - maxNodeY + 150);
+    return { width: vbw, height: finalVBH, groundY: finalVBH - GROUND_MARGIN, trunkTopX, trunkPath, limbs };
   }
 
-  /* ---------- render ---------- */
-  function matchesFilter(e) {
-    const q = filterText.trim().toLowerCase();
-    if (!q) return true;
-    return (e.title + " " + e.location + " " + e.notes).toLowerCase().includes(q);
-  }
+  function matchesFilter(e) { const q = filterText.trim().toLowerCase(); return !q || (e.title + " " + e.location + " " + e.notes).toLowerCase().includes(q); }
 
   function render() {
     const svg = document.getElementById("treeSvg");
@@ -875,243 +449,130 @@
     const layout = buildLayout(list);
     lastLayout = layout;
     
+    // Explicit px sizing required for custom Pan/Zoom logic to work smoothly
+    svg.setAttribute("width", layout.width);
+    svg.setAttribute("height", layout.height);
     svg.setAttribute("viewBox", `0 0 ${layout.width} ${layout.height}`);
-    svg.setAttribute("preserveAspectRatio", "xMidYMax meet");
+    
+    if (!hasAutoCentered && layout.width > 0) { setTimeout(() => { centerTree(layout); hasAutoCentered = true; }, 50); }
 
-    let defs = `
-      <defs>
-        <radialGradient id="groundGlow" cx="50%" cy="100%" r="70%">
-          <stop offset="0%" stop-color="rgba(74,222,128,0.14)"/>
-          <stop offset="100%" stop-color="rgba(74,222,128,0)"/>
-        </radialGradient>
-      </defs>`;
-
-    let ground = `<ellipse cx="${layout.width / 2}" cy="${layout.groundY + 6}" rx="${layout.width * 0.32}" ry="22" fill="url(#groundGlow)"/>`;
+    let defs = `<defs><radialGradient id="groundGlow" cx="50%" cy="100%" r="70%"><stop offset="0%" stop-color="rgba(74,222,128,0.12)"/><stop offset="100%" stop-color="rgba(74,222,128,0)"/></radialGradient></defs>`;
+    let ground = `<ellipse cx="${layout.width / 2}" cy="${layout.groundY + 8}" rx="${layout.width * 0.35}" ry="24" fill="url(#groundGlow)"/>`;
 
     let limbPaths = "", branchesSvg = "", fillerSvg = "", leavesSvg = "";
     const miniLeafD = "M0,-1 C -7,-7 -5,-16 -1,-20 L0,-23 L1,-20 C 5,-16 7,-7 0,-1 Z";
     
     layout.limbs.forEach(limb => {
       limbPaths += `<path class="trunk" d="${limb.path}"/>`;
-      fillerSvg += limb.fillerTwigs.map(tw =>
-        `<path class="twig" d="M ${tw.x1},${tw.y1} L ${tw.x2},${tw.y2}" stroke-width="2.5"/>
-         <g transform="translate(${tw.x2},${tw.y2}) rotate(${tw.angle})"><path class="mini-leaf" d="${miniLeafD}"/></g>`
-      ).join("");
-
+      fillerSvg += limb.fillerTwigs.map(tw => `<path class="twig" d="M ${tw.x1},${tw.y1} L ${tw.x2},${tw.y2}" stroke-width="2.5"/><g transform="translate(${tw.x2},${tw.y2}) rotate(${tw.angle})"><path class="mini-leaf" d="${miniLeafD}"/></g>`).join("");
       limb.branches.forEach(b => {
         const strokeW = 5 + (hashCode(b.entry.id) % 3);
         branchesSvg += `<path class="branch" d="M ${b.startX},${b.startY} Q ${b.ctrlX},${b.ctrlY} ${b.endX},${b.endY}" stroke-width="${strokeW}"/>`;
-        branchesSvg += b.twigs.map(tw =>
-          `<path class="twig" d="M ${tw.x1},${tw.y1} L ${tw.x2},${tw.y2}" stroke-width="3"/>
-           <g transform="translate(${tw.x2},${tw.y2}) rotate(${tw.angle}) scale(1.3)"><path class="mini-leaf" d="${miniLeafD}"/></g>`
-        ).join("");
-
-        const e = b.entry;
-        const done = e.done ? "done" : "";
-        const isNew = e.id === newLeafId ? "new-leaf" : "";
-        const lscale = 1.05 + (hashCode(e.id + "s") % 30) / 100;
-        const dur = (3 + (hashCode(e.id + "d") % 20) / 10).toFixed(1);
-        const delay = (-(hashCode(e.id + "e") % 30) / 10).toFixed(1);
-        const labelY = b.endY - 34 * lscale - 10;
+        branchesSvg += b.twigs.map(tw => `<path class="twig" d="M ${tw.x1},${tw.y1} L ${tw.x2},${tw.y2}" stroke-width="3"/><g transform="translate(${tw.x2},${tw.y2}) rotate(${tw.angle}) scale(1.3)"><path class="mini-leaf" d="${miniLeafD}"/></g>`).join("");
         
+        const e = b.entry, done = e.done ? "done" : "", isNew = e.id === newLeafId ? "new-leaf" : "";
+        const lscale = 1.05 + (hashCode(e.id + "s") % 30) / 100, dur = (3 + (hashCode(e.id + "d") % 20) / 10).toFixed(1), delay = (-(hashCode(e.id + "e") % 30) / 10).toFixed(1);
+        
+        // Track coordinate for camera panning
+        if (isNew) setTimeout(() => panToNode(b.endX, b.endY), 50);
+
         leavesSvg += `
-          <g class="leaf-group ${done} ${isNew}" data-id="${e.id}" tabindex="0" role="button"
-             aria-label="${escapeHtml(e.title || 'Untitled leaf')}"
-             style="animation-duration: ${dur}s; animation-delay: ${delay}s;">
+          <g class="leaf-group ${done} ${isNew}" data-id="${e.id}" tabindex="0" role="button" aria-label="${escapeHtml(e.title || 'Untitled leaf')}" style="animation-duration: ${dur}s; animation-delay: ${delay}s;">
             <title>${escapeHtml(e.title || 'Untitled leaf')}\n${e.date}</title>
-            <circle class="hit" cx="${b.endX}" cy="${b.endY - 16 * lscale}" r="26"/>
+            <circle class="hit" cx="${b.endX}" cy="${b.endY - 16 * lscale}" r="45"/>
             <g transform="translate(${b.endX},${b.endY}) rotate(${b.angleDeg}) scale(${lscale})">
               <path class="leaf-body" d="M0,-2 C -13,-13 -9,-30 -3,-38 L0,-45 L3,-38 C 9,-30 13,-13 0,-2 Z"/>
               <path class="leaf-vein" d="M0,-4 L0,-40"/>
             </g>
-            <text class="leaf-label ${done}" x="${b.endX}" y="${labelY}">${escapeHtml(truncate(e.title, 16))}</text>
+            <text class="leaf-label ${done}" x="${b.endX}" y="${b.endY - 36 * lscale - 12}">${escapeHtml(truncate(e.title, 16))}</text>
           </g>`;
       });
     });
 
-    let emptyMsg = list.length === 0
-      ? `<text class="empty-note" x="${layout.width / 2}" y="${layout.groundY - 220}">no leaves yet — press ✦ to plant one</text>`
-      : "";
-
-    const origin = `${layout.trunkTopX}px ${layout.groundY}px`;
+    let emptyMsg = list.length === 0 ? `<text class="empty-note" x="${layout.width / 2}" y="${layout.groundY - 240}">No leaves yet — press ✦ to plant</text>` : "";
     
-    svg.innerHTML = defs + ground
-      + `<g id="woodGroup" class="wood-group" style="transform-origin:${origin}">`
-      + `<path class="trunk" d="${layout.trunkPath}"/>` + limbPaths + fillerSvg + branchesSvg
-      + `</g>`
-      + `<g id="leafGroup">${leavesSvg}</g>`
-      + emptyMsg;
+    svg.innerHTML = defs + ground + `<g id="woodGroup" class="wood-group" style="transform-origin:${layout.trunkTopX}px ${layout.groundY}px"><path class="trunk" d="${layout.trunkPath}"/>${limbPaths}${fillerSvg}${branchesSvg}</g><g id="leafGroup">${leavesSvg}</g>${emptyMsg}`;
 
+    // Click handler with drag-cancellation
     svg.querySelectorAll(".leaf-group").forEach(g => {
-      g.addEventListener("click", () => openModal(g.getAttribute("data-id")));
-      g.addEventListener("keydown", (ev) => { 
-        if (ev.key === "Enter" || ev.key === " ") { 
-          ev.preventDefault(); 
-          openModal(g.getAttribute("data-id")); 
-        }
+      g.addEventListener("click", (e) => {
+        // If the user moved their finger/mouse more than 8px between down and up, it was a drag, NOT a click.
+        const dist = Math.hypot(e.clientX - clickStartX, e.clientY - clickStartY);
+        if (dist > 8) return; 
+        openModal(g.getAttribute("data-id"));
       });
     });
 
-    // Clear new leaf state after rendering to only animate once
-    if (newLeafId) {
-      setTimeout(() => { newLeafId = null; }, 600);
-    }
+    if (newLeafId) setTimeout(() => { newLeafId = null; }, 700);
   }
 
-  /* ---------- modal ---------- */
+  /* ---------- modal interactions ---------- */
   function openModal(id) {
-    activeId = id;
-    const entry = entries.find(e => e.id === id);
-    if (!entry) return;
-    const overlay = document.getElementById("overlay");
-    const card = document.getElementById("modalCard");
-
+    activeId = id; const entry = entries.find(e => e.id === id); if (!entry) return;
+    const overlay = document.getElementById("overlay"), card = document.getElementById("modalCard");
     card.innerHTML = `
+      <div class="drag-handle"></div>
       <div class="modal-top">
-        <input type="text" class="title-input" id="f-title" placeholder="untitled leaf…" value="${escapeHtml(entry.title)}">
+        <input type="text" class="title-input" id="f-title" placeholder="Untitled leaf…" value="${escapeHtml(entry.title)}">
         <button class="close-btn" id="closeModal">✕</button>
       </div>
-      <div class="save-status" id="saveStatus">saved to this device</div>
-
+      <div class="save-status" id="saveStatus">Saved to this device</div>
       <div class="field-row">
         <div class="field"><label>Date</label><input type="date" id="f-date" value="${entry.date || ''}"></div>
         <div class="field"><label>Time</label><input type="time" id="f-time" value="${entry.time || ''}"></div>
-        <div class="field full"><label>Location</label><input type="text" id="f-location" placeholder="e.g. the old oak library" value="${escapeHtml(entry.location)}"></div>
+        <div class="field full"><label>Location</label><input type="text" id="f-location" placeholder="e.g. The old oak library" value="${escapeHtml(entry.location)}"></div>
       </div>
-
-      <div class="notes-label">Notes &amp; details</div>
-      <textarea class="notes-area" id="f-notes" placeholder="what needs doing, remembering, or tending to…">${escapeHtml(entry.notes)}</textarea>
-
+      <div class="notes-label">Notes &amp; Details</div>
+      <textarea class="notes-area" id="f-notes" placeholder="What needs doing, remembering, or tending to…">${escapeHtml(entry.notes)}</textarea>
       <div class="modal-footer">
-        <label class="done-toggle"><input type="checkbox" id="f-done" ${entry.done ? 'checked' : ''}> mark as complete</label>
-        <button class="delete-btn" id="deleteBtn">✕ REMOVE LEAF</button>
+        <label class="done-toggle"><input type="checkbox" id="f-done" ${entry.done ? 'checked' : ''}> Mark as complete</label>
+        <button class="delete-btn" id="deleteBtn">✕ Remove Leaf</button>
       </div>
     `;
 
     ["title", "date", "time", "location", "notes"].forEach(f => {
-      document.getElementById("f-" + f).addEventListener("input", debounce(() => {
-        entry[f] = document.getElementById("f-" + f).value;
-        persist();
-        render(); // Updating date will now instantly re-sort the tree
-      }, 250));
+      document.getElementById("f-" + f).addEventListener("input", debounce(() => { entry[f] = document.getElementById("f-" + f).value; persist(); render(); }, 300));
     });
 
-    document.getElementById("f-done").addEventListener("change", (ev) => {
-      entry.done = ev.target.checked; 
-      persist(); 
-      render();
-    });
-
+    document.getElementById("f-done").addEventListener("change", (ev) => { entry.done = ev.target.checked; persist(); render(); });
     document.getElementById("deleteBtn").addEventListener("click", () => {
-      if (confirm("Remove this leaf from the tree? This cannot be undone.")) {
-        entries = entries.filter(e => e.id !== id);
-        persist(); 
-        closeModal(); 
-        render();
-      }
+      if (confirm("Remove this leaf from the tree? This cannot be undone.")) { entries = entries.filter(e => e.id !== id); persist(); closeModal(); render(); }
     });
-
     document.getElementById("closeModal").addEventListener("click", closeModal);
-
     overlay.classList.add("show");
-    setTimeout(() => { 
-      const t = document.getElementById("f-title"); 
-      if (t) t.focus(); 
-    }, 200);
   }
 
-  function closeModal() {
-    document.getElementById("overlay").classList.remove("show");
-    activeId = null;
-  }
+  function closeModal() { document.getElementById("overlay").classList.remove("show"); activeId = null; }
+  document.getElementById("overlay").addEventListener("click", (e) => { if (e.target.id === "overlay") closeModal(); });
 
-  document.getElementById("overlay").addEventListener("click", (e) => {
-    if (e.target.id === "overlay") closeModal();
-  });
+  function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+  function persist() { saveEntries(entries); const status = document.getElementById("saveStatus"); if (status) { status.textContent = "✓ Saved to this device"; status.classList.add("on"); clearTimeout(persist._t); persist._t = setTimeout(() => { if (status) { status.textContent = "Saved to this device"; status.classList.remove("on"); } }, 1500); } }
 
-  function debounce(fn, ms) { 
-    let t; 
-    return (...a) => { 
-      clearTimeout(t); 
-      t = setTimeout(() => fn(...a), ms); 
-    }; 
-  }
-
-  function persist() {
-    saveEntries(entries);
-    const status = document.getElementById("saveStatus");
-    if (status) {
-      status.textContent = "✓ saved to this device";
-      status.classList.add("on");
-      clearTimeout(persist._t);
-      persist._t = setTimeout(() => { 
-        if (status) { 
-          status.textContent = "saved to this device"; 
-          status.classList.remove("on"); 
-        } 
-      }, 1300);
-    }
-  }
-
-  /* ---------- new entry ---------- */
+  /* ---------- global events ---------- */
   document.getElementById("fab").addEventListener("click", () => {
-    const iso = new Date().toISOString().slice(0, 10);
-    const e = { id: uid(), title: "", date: iso, time: "", location: "", notes: "", done: false };
-    entries.push(e);
-    newLeafId = e.id; // Flag for the sprout animation
-    persist();
-    render();
-    openModal(e.id);
+    const e = { id: uid(), title: "", date: new Date().toISOString().slice(0, 10), time: "", location: "", notes: "", done: false };
+    entries.push(e); newLeafId = e.id; persist(); render();
+    setTimeout(() => openModal(e.id), 700);
   });
 
-  document.getElementById("search").addEventListener("input", (e) => { 
-    filterText = e.target.value; 
-    render(); 
-  });
+  document.getElementById("search").addEventListener("input", (e) => { filterText = e.target.value; render(); });
 
-  /* ---------- clear grove ---------- */
   document.getElementById("clearAll").addEventListener("click", () => {
-    if (entries.length === 0) return;
-    if (!confirm("Let the wind take every leaf, and the tree with it? This clears all entries and can't be undone.")) return;
+    if (entries.length === 0 || !confirm("Let the wind take every leaf?")) return;
     closeModal();
-
-    const svg = document.getElementById("treeSvg");
-    const leaves = svg.querySelectorAll(".leaf-group");
-    
+    const svg = document.getElementById("treeSvg"), leaves = svg.querySelectorAll(".leaf-group");
     leaves.forEach(el => {
-      const fromLeft = Math.random() < 0.5;
-      const dx = (280 + Math.random() * 420) * (fromLeft ? -1 : 1);
-      const dy = -(60 + Math.random() * 180);
-      const rot = (Math.random() * 640 - 320);
-      el.style.setProperty("--gx", dx + "px");
-      el.style.setProperty("--gy", dy + "px");
-      el.style.setProperty("--gr", rot + "deg");
-      el.style.animation = `gustAway ${0.85 + Math.random() * 0.55}s ease-in forwards`;
-      el.style.animationDelay = (Math.random() * 0.45) + "s";
+      const dx = (300 + Math.random() * 500) * (Math.random() < 0.5 ? -1 : 1), dy = -(80 + Math.random() * 200), rot = (Math.random() * 720 - 360);
+      el.style.setProperty("--gx", dx + "px"); el.style.setProperty("--gy", dy + "px"); el.style.setProperty("--gr", rot + "deg");
+      el.style.animation = `gustAway ${0.9 + Math.random() * 0.6}s cubic-bezier(0.2, 0.8, 0.2, 1) forwards`; el.style.animationDelay = (Math.random() * 0.4) + "s";
     });
-
     const wood = document.getElementById("woodGroup");
-    
     if (wood) {
-      const layout = lastLayout;
-      const ox = layout ? layout.trunkTopX : 0, oy = layout ? layout.groundY : 0;
-      const crackSvg = `
-        <path class="crack-line flash" d="M ${ox-6},${oy-6} L ${ox+4},${oy-20} L ${ox-3},${oy-30}"/>
-        <path class="crack-line flash" d="M ${ox+8},${oy-4} L ${ox-2},${oy-22} L ${ox+6},${oy-34}"/>`;
-      wood.insertAdjacentHTML("beforeend", crackSvg);
+      const ox = lastLayout ? lastLayout.trunkTopX : 0, oy = lastLayout ? lastLayout.groundY : 0;
+      wood.insertAdjacentHTML("beforeend", `<path class="crack-line flash" d="M ${ox-6},${oy-6} L ${ox+4},${oy-20} L ${ox-3},${oy-30}"/><path class="crack-line flash" d="M ${ox+8},${oy-4} L ${ox-2},${oy-22} L ${ox+6},${oy-34}"/>`);
+      setTimeout(() => wood.classList.add("topple"), 650);
     }
-
-    setTimeout(() => { if (wood) wood.classList.add("topple"); }, 650);
-
-    setTimeout(() => {
-      entries = [];
-      persist();
-      render();
-      const freshWood = document.getElementById("woodGroup");
-      const freshLeaf = document.getElementById("leafGroup");
-      if (freshWood) freshWood.classList.add("regrow");
-      if (freshLeaf) freshLeaf.classList.add("regrow");
-    }, 1750);
+    setTimeout(() => { entries = []; persist(); render(); const fw = document.getElementById("woodGroup"), fl = document.getElementById("leafGroup"); if (fw) fw.classList.add("regrow"); if (fl) fl.classList.add("regrow"); centerTree(lastLayout, true); }, 1800);
   });
 
   spawnFireflies();
