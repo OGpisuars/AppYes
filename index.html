@@ -31,6 +31,7 @@
   }
 
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  button { touch-action: manipulation; }
 
   html, body {
     height: 100%; margin: 0; background: var(--bg-deep);
@@ -83,18 +84,32 @@
   .search-wrap input {
     width: 100%; height: 42px; background: var(--bg-input); border: 1px solid var(--line);
     color: var(--text-main); font-family: 'EB Garamond', serif; font-size: 16px;
-    padding: 0 16px 0 36px; border-radius: 24px; outline: none; transition: all .3s;
+    padding: 0 76px 0 36px; border-radius: 24px; outline: none; transition: all .3s;
   }
   .search-wrap input:focus { border-color: var(--moss-dim); background: rgba(20, 36, 26, 0.7); box-shadow: 0 0 0 3px rgba(74,222,128,0.1); }
   .search-wrap::before { content: "⌕"; position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-faint); font-size: 16px; }
+  .search-badge {
+    position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .3px;
+    color: var(--text-faint); pointer-events: none; white-space: nowrap; transition: color .2s;
+  }
+  .search-badge.match { color: var(--moss-soft); text-shadow: 0 0 6px rgba(74,222,128,0.4); }
+  .search-badge.none { color: var(--danger); }
 
   .wind-btn {
-    flex-shrink: 0; width: 42px; height: 42px; border-radius: 50%;
+    flex-shrink: 0; width: 42px; height: 42px; border-radius: 50%; position: relative;
     background: var(--bg-input); border: 1px solid var(--line); color: var(--text-dim);
     font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .2s;
   }
   .wind-btn:hover { border-color: var(--moss-dim); color: var(--moss-soft); box-shadow: 0 0 14px rgba(74,222,128,0.15); transform: rotate(5deg); }
   .wind-btn:disabled { opacity: .35; cursor: default; transform: none !important; box-shadow: none !important; }
+  .ug-badge {
+    position: absolute; top: -4px; right: -4px; min-width: 16px; height: 16px; padding: 0 4px;
+    border-radius: 999px; background: var(--amber); color: #1a1207; font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 600; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 6px rgba(224,169,74,0.6); line-height: 1;
+  }
+  .ug-badge:empty { display: none; }
 
   /* ---------- filter bar ---------- */
   .filterbar {
@@ -109,7 +124,7 @@
   .chip {
     flex-shrink: 0; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .5px;
     color: var(--text-dim); background: var(--bg-input); border: 1px solid var(--line); border-radius: 999px;
-    padding: 6px 14px; cursor: pointer; transition: all .2s; white-space: nowrap;
+    padding: 8px 14px; cursor: pointer; transition: all .2s; white-space: nowrap;
   }
   .chip:hover { border-color: var(--moss-dim); color: var(--moss-soft); }
   .chip.active { background: rgba(74,222,128,0.15); border-color: var(--moss); color: var(--moss-soft); box-shadow: 0 0 10px rgba(74,222,128,0.15); }
@@ -130,16 +145,16 @@
   /* ---------- canvas (Pan/Zoom Engine) ---------- */
   .canvas-wrap {
     position: absolute; inset: 0; top: 113px; /* Account for topbar + filterbar */
-    z-index: 1; overflow: hidden;
+    z-index: 1; overflow: hidden; contain: layout paint;
     cursor: grab; touch-action: none; /* Disables all native touch-scrolling */
   }
   .canvas-wrap:active { cursor: grabbing; }
-  
+
   #zoomContainer {
     position: absolute; top: 0; left: 0;
-    transform-origin: 0 0;
+    transform-origin: 0 0; will-change: transform;
     /* We add a transition here ONLY when we want to smoothly animate camera movement */
-    transition: transform 0s linear; 
+    transition: transform 0s linear;
   }
   #zoomContainer.smooth-cam { transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1); }
 
@@ -149,16 +164,26 @@
     background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(124,240,163,0.12), transparent 70%);
     filter: blur(20px); pointer-events: none;
   }
-  
-  #treeSvg { position: relative; z-index: 1; display: block; }
+
+  #treeSvg { position: relative; z-index: 1; display: block; transition: filter .35s ease; }
+  #treeSvg.tree-blurred { filter: blur(4.5px) brightness(0.7) saturate(0.85); }
+
+  /* The Focus Lens: a crisp clone of the in-focus leaf floats above the blurred backdrop,
+     sharing the same transform (it's a sibling inside zoomContainer), so it tracks perfectly. */
+  #treeSvgFocus {
+    position: absolute; top: 0; left: 0; z-index: 2; pointer-events: none;
+    opacity: 0; transition: opacity .3s ease;
+  }
+  #treeSvgFocus.show { opacity: 1; }
 
   .trunk { fill: var(--bark); }
   .branch { fill: none; stroke: var(--bark-light); stroke-linecap: round; }
   .twig { fill: none; stroke: var(--bark-light); stroke-linecap: round; opacity: .9; }
-  
-  .leaf-group { cursor: pointer; animation: sway ease-in-out infinite; transform-box: fill-box; transform-origin: bottom center; }
-  .leaf-group .hit { fill: transparent; cursor: pointer; } 
-  .leaf-body { fill: var(--leaf-fill, var(--moss-dim)); stroke: var(--leaf-stroke, var(--moss)); stroke-width: 1; filter: drop-shadow(0 2px 6px rgba(74,222,128,0.3)); transition: all .3s; }
+
+  .leaf-group { cursor: pointer; animation: sway ease-in-out infinite; transform-box: fill-box; transform-origin: bottom center; transition: opacity .3s ease; }
+  .leaf-group.still { animation: none; }
+  .leaf-group .hit { fill: transparent; cursor: pointer; }
+  .leaf-body { fill: var(--leaf-fill, var(--moss-dim)); stroke: var(--leaf-stroke, var(--moss)); stroke-width: 1; transition: fill .3s, stroke .3s, filter .2s; }
   .leaf-vein { stroke: rgba(3,8,5,0.6); stroke-width: 1; }
   .leaf-bud .leaf-body { stroke-width: 1.3; }
 
@@ -167,13 +192,23 @@
   .leaf-group.done:hover .leaf-body, .leaf-group.done:focus-visible .leaf-body { fill: var(--amber); filter: drop-shadow(0 0 12px rgba(224,169,74,0.8)); }
   .leaf-group.leaf-fresh .leaf-body { filter: drop-shadow(0 0 13px rgba(160,255,200,0.75)); }
 
-  /* ---------- knowledge-graph tag links ---------- */
+  /* ---------- search: dim non-matches, glow matches, camera does the rest ---------- */
+  .leaf-group.search-dim { opacity: .2; }
+  .leaf-group.search-dim .leaf-body { filter: none; }
+  .leaf-group.search-match .leaf-body { filter: drop-shadow(0 0 14px rgba(124,240,163,0.85)); stroke: var(--moss-soft); }
+  .leaf-group.search-match .leaf-label { fill: var(--moss-soft); }
+
+  /* ---------- dynamic links: a neural web between leaves that share a tag or keyword,
+     each connecting term gets its own color so the web reads at a glance ---------- */
   .tag-link {
-    fill: none; stroke: rgba(124,240,163,0.28); stroke-width: 1.3; stroke-dasharray: 2 6; stroke-linecap: round;
-    filter: drop-shadow(0 0 3px rgba(74,222,128,0.2)); pointer-events: none; animation: flowDash 3.2s linear infinite;
-    transition: stroke .3s, opacity .3s;
+    fill: none; stroke: var(--link-color, rgba(124,240,163,0.5)); stroke-linecap: round;
+    opacity: .5; pointer-events: none; animation: flowDash 3.2s linear infinite;
+    filter: drop-shadow(0 0 2px var(--link-color, rgba(74,222,128,0.2)));
+    transition: stroke-width .25s, opacity .25s, filter .25s;
   }
-  .tag-link.active { stroke: rgba(168,255,206,0.9); stroke-width: 1.8; filter: drop-shadow(0 0 7px rgba(124,240,163,0.6)); }
+  .tag-link.link-tag { stroke-width: 1.7; stroke-dasharray: 2 6; opacity: .62; }
+  .tag-link.link-keyword { stroke-width: 1.1; stroke-dasharray: 1 5; opacity: .38; }
+  .tag-link.active { stroke-width: 2.4; opacity: 1; filter: drop-shadow(0 0 8px var(--link-color, rgba(124,240,163,0.6))); }
   @keyframes flowDash { to { stroke-dashoffset: -40; } }
 
   @keyframes sway { 0%, 100% { transform: rotate(-2.5deg); } 50% { transform: rotate(2.5deg); } }
@@ -196,7 +231,7 @@
 
   .leaf-label { font-family: 'JetBrains Mono', monospace; font-size: 13px; fill: var(--text-dim); text-anchor: middle; pointer-events: none; letter-spacing: .5px; font-weight: 500; }
   .leaf-label.done { fill: var(--amber); opacity: .85; }
-  .empty-note { fill: var(--text-faint); font-family: 'EB Garamond', serif; font-style: italic; font-size: 20px; text-anchor: middle; letter-spacing: 1px; }
+  .empty-note { fill: var(--text-faint); font-family: 'EB Garamond', serif; font-style: italic; font-size: 18px; text-anchor: middle; letter-spacing: 1px; }
 
   /* ---------- FAB ---------- */
   .fab {
@@ -213,13 +248,59 @@
   .fab:disabled { opacity: .4; cursor: default; animation: none; transform: none; }
   @keyframes pulseFab { 0% { box-shadow: 0 8px 24px rgba(0,0,0,0.6), 0 0 15px rgba(74,222,128,0.2); } 100% { box-shadow: 0 8px 24px rgba(0,0,0,0.6), 0 0 30px rgba(74,222,128,0.4); } }
 
+  /* ---------- quick capture FAB ---------- */
+  .quick-fab {
+    position: fixed; right: 24px; bottom: 106px; z-index: 12;
+    width: 46px; height: 46px; border-radius: 50%;
+    background: var(--bg-input); border: 1px solid var(--line); color: var(--amber);
+    font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.5); transition: all .2s;
+  }
+  .quick-fab:hover { border-color: var(--amber-dim); box-shadow: 0 4px 18px rgba(224,169,74,0.25); transform: scale(1.06); }
+  .quick-fab:active { transform: scale(.94); }
+
+  /* ---------- Focus Mode: a minimalist quick-capture overlay, tree hidden, one field ---------- */
+  .focus-overlay {
+    position: fixed; inset: 0; z-index: 40;
+    background: radial-gradient(ellipse at 50% 38%, rgba(12,22,15,0.98), rgba(2,4,3,0.995));
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity .35s ease;
+  }
+  .focus-overlay.show { opacity: 1; pointer-events: auto; }
+  .focus-close { position: absolute; top: 20px; right: 20px; }
+  .focus-inner { width: 100%; max-width: 440px; padding: 0 28px; text-align: center; }
+  .focus-glyph { font-size: 34px; margin-bottom: 6px; animation: loadSway 3s ease-in-out infinite; filter: drop-shadow(0 0 14px rgba(74,222,128,0.4)); }
+  .focus-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--text-faint); margin-bottom: 22px; }
+  .focus-input {
+    width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--line);
+    color: var(--text-main); font-family: 'EB Garamond', serif; font-size: 26px; text-align: center;
+    padding: 10px 4px; outline: none; transition: border-color .2s;
+  }
+  .focus-input:focus { border-color: var(--moss-dim); }
+  .focus-input::placeholder { color: rgba(139,163,148,0.4); }
+  .focus-tags-input {
+    width: 100%; background: transparent; border: none; color: var(--text-dim); font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; text-align: center; padding: 14px 4px 4px; outline: none; letter-spacing: .3px;
+  }
+  .focus-tags-input::placeholder { color: var(--text-faint); }
+  .focus-hint { margin-top: 18px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--text-faint); letter-spacing: .5px; }
+  .focus-session { margin-top: 26px; display: flex; flex-direction: column; gap: 6px; max-height: 160px; overflow-y: auto; }
+  .focus-session-item {
+    font-family: 'EB Garamond', serif; font-size: 14px; color: var(--moss-soft); opacity: .85;
+    display: flex; align-items: center; gap: 8px; justify-content: center; animation: regrowFade .3s ease both;
+  }
+  @media (max-width: 480px) {
+    .quick-fab { bottom: 90px; right: 20px; width: 42px; height: 42px; font-size: 16px; }
+    .focus-input { font-size: 21px; }
+  }
+
   /* ---------- modal ---------- */
   .modal-overlay {
     position: fixed; inset: 0; z-index: 20; background: rgba(2, 4, 3, 0.75); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
     display: flex; align-items: flex-end; justify-content: center; opacity: 0; pointer-events: none; transition: opacity .3s ease;
   }
   .modal-overlay.show { opacity: 1; pointer-events: auto; }
-  
+
   .modal-card {
     width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; background: var(--bg-panel);
     backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
@@ -253,13 +334,47 @@
   .field input:focus, .notes-area:focus { border-color: var(--moss-dim); box-shadow: 0 0 0 3px rgba(74,222,128,0.08); background: rgba(20, 36, 26, 0.4); }
   .notes-area { width: 100%; min-height: 130px; background: rgba(0,0,0,0.3); border: 1px solid var(--line); border-radius: 10px; color: var(--text-main); font-family: 'EB Garamond', serif; font-size: 16px; line-height: 1.6; padding: 16px; outline: none; resize: vertical; transition: all .2s; margin-top: 8px; }
 
-  .modal-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(28, 46, 32, 0.6); }
+  .modal-footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(28, 46, 32, 0.6); }
   .done-toggle { display: flex; align-items: center; gap: 10px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--text-dim); cursor: pointer; user-select: none; }
   .done-toggle input { accent-color: var(--amber); width: 18px; height: 18px; cursor: pointer; }
-  .delete-btn { background: transparent; border: 1px solid rgba(201,106,90,0.3); color: var(--danger); font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: .5px; padding: 10px 16px; border-radius: 8px; cursor: pointer; transition: all .2s; }
+  .footer-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .prune-btn { background: transparent; border: 1px solid var(--moss-dim); color: var(--moss-soft); font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: .5px; padding: 10px 16px; border-radius: 8px; cursor: pointer; transition: all .2s; white-space: nowrap; }
+  .prune-btn:hover { background: rgba(74,222,128,0.12); border-color: var(--moss); }
+  .delete-btn { background: transparent; border: 1px solid rgba(201,106,90,0.3); color: var(--danger); font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: .5px; padding: 10px 16px; border-radius: 8px; cursor: pointer; transition: all .2s; white-space: nowrap; }
   .delete-btn:hover { background: rgba(201,106,90,0.15); border-color: var(--danger); }
 
+  /* ---------- underground (archive) panel ---------- */
+  .ug-bulk { margin-bottom: 16px; }
+  .ug-bulk button { width: 100%; text-align: center; }
+  .ug-list { display: flex; flex-direction: column; gap: 8px; max-height: 55vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .ug-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: rgba(0,0,0,0.25); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; animation: regrowFade .3s ease both; }
+  .ug-row-main { min-width: 0; }
+  .ug-row-title { font-family: 'EB Garamond', serif; font-size: 15px; color: var(--text-main); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ug-row-meta { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-faint); margin-top: 3px; letter-spacing: .3px; }
+  .ug-row-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .ug-row-actions button { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: rgba(0,0,0,0.2); color: var(--text-dim); cursor: pointer; font-size: 14px; transition: all .2s; }
+  .ug-restore:hover { border-color: var(--moss); color: var(--moss-soft); background: rgba(74,222,128,0.1); }
+  .ug-forget:hover { border-color: var(--danger); color: var(--danger); background: rgba(201,106,90,0.12); }
+  .ug-empty { text-align: center; color: var(--text-faint); font-style: italic; padding: 34px 10px; font-size: 14.5px; line-height: 1.5; }
+  .ug-subhead { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .3px; color: var(--text-dim); margin: -8px 0 18px; }
+
   .hint-overlay { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10; color: var(--text-faint); font-size: 13px; font-family: 'JetBrains Mono', monospace; pointer-events: none; text-align: center; }
+
+  /* ---------- leaf peek bubble (long-press preview) ---------- */
+  .peek-bubble {
+    position: fixed; z-index: 22; max-width: 260px; background: rgba(11, 18, 13, 0.97);
+    border: 1px solid rgba(74,222,128,0.35); border-radius: 14px; padding: 14px 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6), 0 0 24px rgba(74,222,128,0.12);
+    opacity: 0; transform: translate(-50%, -100%) scale(.92); transform-origin: bottom center;
+    pointer-events: none; transition: opacity .16s ease, transform .16s ease; will-change: transform, opacity;
+  }
+  .peek-bubble.show { opacity: 1; transform: translate(-50%, calc(-100% - 16px)) scale(1); }
+  .peek-bubble .pk-title { font-family: 'Cinzel', serif; font-size: 15px; color: var(--moss-soft); letter-spacing: .3px; margin-bottom: 4px; }
+  .peek-bubble .pk-meta { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-faint); margin-bottom: 8px; line-height: 1.5; }
+  .peek-bubble .pk-notes { font-family: 'EB Garamond', serif; font-size: 13.5px; color: var(--text-dim); line-height: 1.4; max-height: 72px; overflow: hidden; }
+  .peek-bubble .pk-tags { margin-top: 9px; display: flex; flex-wrap: wrap; gap: 4px; }
+  .peek-bubble .pk-tag { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: var(--moss-soft); background: rgba(74,222,128,0.12); border: 1px solid var(--moss-dim); border-radius: 999px; padding: 2px 8px; }
+  .peek-bubble .pk-hint { margin-top: 9px; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-faint); letter-spacing: .3px; }
 
   /* ---------- loading veil ---------- */
   .loading-veil {
@@ -289,14 +404,26 @@
 
   @media (max-width: 480px) {
     .brand h1 { display: none; } .field-row { grid-template-columns: 1fr; gap: 12px; }
-    .topbar { padding: 12px 16px; gap: 12px; } .fab { bottom: 24px; right: 20px; width: 56px; height: 56px; font-size: 24px; }
-    .modal-card { padding: 24px 20px 32px; }
-    .filterbar { padding: 7px 16px; top: 66px; }
-    .canvas-wrap { top: 105px; }
+    .topbar { padding: 12px 16px; gap: 10px; flex-wrap: wrap; row-gap: 8px; }
+    .brand { order: 1; }
+    .search-wrap { order: 3; flex: 1 1 100%; }
+    .wind-btn { order: 2; }
+    .fab { bottom: 24px; right: 20px; width: 56px; height: 56px; font-size: 24px; }
+    .modal-card { padding: 22px 18px 28px; }
+    .filterbar { padding: 7px 16px; top: 116px; }
+    .canvas-wrap { top: 160px; }
     .zoom-controls { left: 16px; bottom: 24px; }
-    .zc-btn { width: 36px; height: 36px; font-size: 16px; }
+    .zc-btn { width: 40px; height: 40px; font-size: 16px; }
     .zc-center { font-size: 13px; }
     .hint-overlay { display: none; }
+    .search-wrap input { padding-right: 62px; }
+    .peek-bubble { max-width: 220px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .leaf-group, .firefly, .fab, .loading-leaf, .tag-link { animation: none !important; }
+    #zoomContainer.smooth-cam { transition: none !important; }
+    .leaf-group, .modal-card, .toast, .peek-bubble { transition-duration: .01s !important; }
   }
 </style>
 </head>
@@ -312,7 +439,11 @@
 
 <div class="topbar">
   <div class="brand"><span class="glyph">🜃</span><h1>UNDERGROVE</h1><span class="leaf-count" id="leafCount"></span></div>
-  <div class="search-wrap"><input type="text" id="search" placeholder="Search the tree…" autocomplete="off"></div>
+  <div class="search-wrap">
+    <input type="text" id="search" placeholder="Search the tree…" autocomplete="off">
+    <span class="search-badge" id="searchBadge"></span>
+  </div>
+  <button class="wind-btn" id="undergroundBtn" aria-label="The Underground" title="The Underground — pruned leaves (U)">🕳️<span class="ug-badge" id="ugBadge"></span></button>
   <button class="wind-btn" id="clearAll" aria-label="Clear the grove" title="Let the wind take every leaf">💨</button>
 </div>
 
@@ -328,24 +459,46 @@
   <div id="zoomContainer">
     <div class="tree-glow"></div>
     <svg id="treeSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+    <svg id="treeSvgFocus" xmlns="http://www.w3.org/2000/svg"></svg>
   </div>
 </div>
 
-<div class="hint-overlay">drag to pan · scroll or pinch to zoom</div>
+<div class="hint-overlay">drag to pan · scroll or pinch to zoom · hold a leaf to peek</div>
 
 <div class="zoom-controls" id="zoomControls">
   <button class="zc-btn" id="zoomInBtn" aria-label="Zoom in" title="Zoom in (+)">+</button>
   <button class="zc-btn" id="zoomOutBtn" aria-label="Zoom out" title="Zoom out (-)">−</button>
   <button class="zc-btn zc-center" id="recenterBtn" aria-label="Recenter tree" title="Recenter (0)">◎</button>
+  <button class="zc-btn" id="audioBtn" aria-label="Toggle forest ambience" title="Toggle forest ambience (M)">🔈</button>
 </div>
 
+<button class="quick-fab" id="quickCaptureBtn" aria-label="Quick capture" title="Quick Capture — rapid leaf planting (Q)">⚡</button>
 <button class="fab" id="fab" aria-label="Plant a new leaf" title="Plant a new leaf (N)">✦</button>
 
 <div class="modal-overlay" id="overlay">
   <div class="modal-card" id="modalCard"></div>
 </div>
 
+<div class="modal-overlay" id="ugOverlay">
+  <div class="modal-card" id="ugCard"></div>
+</div>
+
+<div class="focus-overlay" id="focusOverlay">
+  <button class="close-btn focus-close" id="focusClose" aria-label="Exit quick capture">✕</button>
+  <div class="focus-inner">
+    <div class="focus-glyph">🌱</div>
+    <div class="focus-label">Quick Capture</div>
+    <input type="text" id="focusInput" class="focus-input" placeholder="What's on your mind…" autocomplete="off">
+    <input type="text" id="focusTags" class="focus-tags-input" placeholder="tags (optional, comma separated)" autocomplete="off">
+    <div class="focus-hint">Enter to plant · Esc to exit</div>
+    <div class="focus-session" id="focusSession"></div>
+  </div>
+</div>
+
+<div class="peek-bubble" id="peekBubble"></div>
+
 <div class="toast-host" id="toastHost"></div>
+
 
 <script>
 (function() {
@@ -357,7 +510,6 @@
       const result = await window.storage.get(STORAGE_KEY, false);
       return result && result.value ? JSON.parse(result.value) : [];
     } catch (err) {
-      // Key not found yet, or a transient error — start with an empty grove either way.
       console.warn("Undergrove: no saved entries yet, or failed to load.", err);
       return [];
     }
@@ -376,11 +528,15 @@
   let entries = [];
   let activeId = null, filterText = "", statusFilter = "all", lastLayout = null, newLeafId = null, hasAutoCentered = false;
   let dataReady = false;
+  let searchMatches = [], searchMatchIndex = 0;
+  let lastOverflowCount = 0, overflowNudged = false;
+  let focusedLeafId = null;
 
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
   function hashCode(str) { let h = 0; for (let i = 0; i < str.length; i++) { h = (h * 31 + str.charCodeAt(i)) >>> 0; } return h; }
   function escapeHtml(s) { return (s || "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function truncate(s, n) { s = s || "Untitled leaf"; return s.length > n ? s.slice(0, n - 1) + "…" : s; }
+  function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
 
   /* ---------- organic growth: word count → leaf size/shape ---------- */
   function wordCount(entry) { return ((entry.title || "") + " " + (entry.notes || "")).trim().split(/\s+/).filter(Boolean).length; }
@@ -399,7 +555,7 @@
   }
   function leafFreshness(updatedAt) {
     const days = Math.max(0, (Date.now() - (updatedAt || Date.now())) / 86400000);
-    const BASE_FILL = "#245234", BASE_STROKE = "#4ade80"; // matches --moss-dim / --moss, the resting look
+    const BASE_FILL = "#245234", BASE_STROKE = "#4ade80";
     if (days <= 30) {
       const t = days / 30;
       return { fill: hexLerp("#6fe9a0", BASE_FILL, t), stroke: hexLerp("#a8ffce", BASE_STROKE, t), fresh: days <= 2.5, days };
@@ -445,6 +601,8 @@
   let isDragging = false, startX = 0, startY = 0;
   let initialPinchDist = null, initialScale = 1;
   let clickStartX = 0, clickStartY = 0;
+  let rafPending = false;
+  const FOCUS_SCALE = 1.55;
 
   function updateTransform(smooth = false) {
     if (smooth) zoomEl.classList.add('smooth-cam');
@@ -453,24 +611,77 @@
     if (smooth) setTimeout(() => zoomEl.classList.remove('smooth-cam'), 600);
   }
 
-  function centerTree(layout, smooth = false) {
+  function scheduleTransform() {
+    if (rafPending) return;
+    rafPending = true;
+    requestAnimationFrame(() => { updateTransform(false); rafPending = false; });
+  }
+
+  /* ---------- Focus Lens: blur the grove, keep one leaf crisp ---------- */
+  function setFocus(id) {
+    const bgSvg = document.getElementById('treeSvg');
+    const focusSvg = document.getElementById('treeSvgFocus');
+    const src = bgSvg.querySelector(`.leaf-group[data-id="${id}"]`);
+    if (!src) { clearFocus(); return; }
+    focusedLeafId = id;
+    const vb = bgSvg.getAttribute('viewBox');
+    if (vb) focusSvg.setAttribute('viewBox', vb);
+    focusSvg.setAttribute('width', bgSvg.getAttribute('width'));
+    focusSvg.setAttribute('height', bgSvg.getAttribute('height'));
+    focusSvg.innerHTML = src.outerHTML;
+    bgSvg.classList.add('tree-blurred');
+    focusSvg.classList.add('show');
+  }
+  function clearFocus() {
+    if (!focusedLeafId) return;
+    focusedLeafId = null;
+    const bgSvg = document.getElementById('treeSvg');
+    const focusSvg = document.getElementById('treeSvgFocus');
+    if (bgSvg) bgSvg.classList.remove('tree-blurred');
+    if (focusSvg) { focusSvg.classList.remove('show'); focusSvg.innerHTML = ''; }
+  }
+  function refreshFocus() {
+    if (!lastLayout || lastLayout.seedling) { clearFocus(); return; }
+    if (scale < FOCUS_SCALE) { clearFocus(); return; }
     const wrapRect = wrap.getBoundingClientRect();
-    // Calculate a good zoom level to fit the tree vertically, with min/max caps
+    const cx = (wrapRect.width / 2 - panX) / scale + lastLayout.vbX;
+    const cy = (wrapRect.height / 2 - panY) / scale + lastLayout.vbY;
+    let best = null, bestD = Infinity;
+    lastLayout.limbs.forEach(limb => limb.branches.forEach(b => {
+      const d = Math.hypot(b.endX - cx, b.endY - cy);
+      if (d < bestD) { bestD = d; best = b.entry; }
+    }));
+    if (best && bestD < 260) setFocus(best.id); else clearFocus();
+  }
+  const refreshFocusDebounced = debounce(refreshFocus, 120);
+
+  function centerTree(layout, smooth = false) {
+    clearFocus();
+    const wrapRect = wrap.getBoundingClientRect();
     const scaleY = (wrapRect.height * 0.8) / layout.height;
     scale = Math.min(Math.max(0.4, scaleY), 1.2);
-    // Center trunk horizontally, place ground near the bottom
     panX = (wrapRect.width / 2) - (layout.width / 2) * scale;
-    panY = wrapRect.height - layout.height * scale - 60; 
+    panY = wrapRect.height - layout.height * scale - 60;
     updateTransform(smooth);
   }
 
-  function panToNode(x, y) {
+  function panToNode(x, y, opts = {}) {
     const wrapRect = wrap.getBoundingClientRect();
     const ox = lastLayout ? lastLayout.vbX : 0, oy = lastLayout ? lastLayout.vbY : 0;
-    scale = Math.max(scale, 0.9); // zoom in a bit if zoomed out
+    scale = Math.max(scale, opts.minScale || 0.9);
     panX = (wrapRect.width / 2) - (x - ox) * scale;
     panY = (wrapRect.height / 2) - (y - oy) * scale;
     updateTransform(true);
+    if (opts.focusId) { clearTimeout(panToNode._ft); panToNode._ft = setTimeout(() => setFocus(opts.focusId), 280); }
+    else refreshFocusDebounced();
+  }
+
+  function panToEntry(entry, opts = {}) {
+    if (!lastLayout || !entry) return;
+    for (const limb of lastLayout.limbs) {
+      const b = limb.branches.find(br => br.entry.id === entry.id);
+      if (b) { panToNode(b.endX, b.endY, opts.focus ? { minScale: 1.7, focusId: entry.id } : {}); return; }
+    }
   }
 
   function zoomBy(delta) {
@@ -480,6 +691,7 @@
     panX = cx - (cx - panX) * (newScale / scale);
     panY = cy - (cy - panY) * (newScale / scale);
     scale = newScale; updateTransform(true);
+    refreshFocusDebounced();
   }
 
   // Mouse Drag
@@ -489,10 +701,10 @@
   });
   window.addEventListener('mousemove', e => {
     if (!isDragging) return;
-    panX = e.clientX - startX; panY = e.clientY - startY; updateTransform();
+    panX = e.clientX - startX; panY = e.clientY - startY; scheduleTransform();
   });
-  window.addEventListener('mouseup', () => { isDragging = false; });
-  
+  window.addEventListener('mouseup', () => { isDragging = false; refreshFocusDebounced(); });
+
   // Mouse Wheel (Zoom)
   wrap.addEventListener('wheel', e => {
     e.preventDefault();
@@ -502,7 +714,8 @@
     const mouseX = e.clientX - rect.left; const mouseY = e.clientY - rect.top;
     panX = mouseX - (mouseX - panX) * (newScale / scale);
     panY = mouseY - (mouseY - panY) * (newScale / scale);
-    scale = newScale; updateTransform();
+    scale = newScale; scheduleTransform();
+    refreshFocusDebounced();
   }, {passive: false});
 
   // Touch Pan/Pinch
@@ -517,9 +730,9 @@
   }, {passive: false});
 
   wrap.addEventListener('touchmove', e => {
-    e.preventDefault(); // crucial to stop native mobile behavior
+    e.preventDefault();
     if (e.touches.length === 1 && isDragging) {
-      panX = e.touches[0].clientX - startX; panY = e.touches[0].clientY - startY; updateTransform();
+      panX = e.touches[0].clientX - startX; panY = e.touches[0].clientY - startY; scheduleTransform();
     } else if (e.touches.length === 2) {
       const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
       const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
@@ -527,22 +740,24 @@
       let newScale = Math.min(Math.max(0.2, initialScale * (dist / initialPinchDist)), 3.5);
       panX = centerX - (centerX - panX) * (newScale / scale);
       panY = centerY - (centerY - panY) * (newScale / scale);
-      scale = newScale; updateTransform();
+      scale = newScale; scheduleTransform();
+      refreshFocusDebounced();
     }
   }, {passive: false});
 
   wrap.addEventListener('touchend', e => {
     if (e.touches.length < 2) initialPinchDist = null;
-    if (e.touches.length === 1) { isDragging = true; startX = e.touches[0].clientX - panX; startY = e.touches[0].clientY - panY; } 
-    else if (e.touches.length === 0) { isDragging = false; }
+    if (e.touches.length === 1) { isDragging = true; startX = e.touches[0].clientX - panX; startY = e.touches[0].clientY - panY; }
+    else if (e.touches.length === 0) { isDragging = false; refreshFocusDebounced(); }
   });
 
-  wrap.addEventListener('contextmenu', e => e.preventDefault()); // Stop right click/long press
+  wrap.addEventListener('contextmenu', e => e.preventDefault());
 
-  /* ---------- fireflies ---------- */
+  /* ---------- fireflies (fewer on small screens) ---------- */
   function spawnFireflies() {
     const host = document.getElementById("fireflies");
-    for (let i = 0; i < 24; i++) {
+    const count = window.innerWidth < 640 ? 10 : 22;
+    for (let i = 0; i < count; i++) {
       const f = document.createElement("div"); f.className = "firefly";
       const size = 2 + Math.random() * 3; f.style.width = size + "px"; f.style.height = size + "px";
       f.style.left = Math.random() * 100 + "vw"; f.style.top = Math.random() * 100 + "vh";
@@ -565,13 +780,68 @@
   }
   function getSortedEntries(list) { return [...list].sort((a, b) => (new Date(a.date + 'T' + (a.time || '00:00')).getTime() || 0) - (new Date(b.date + 'T' + (b.time || '00:00')).getTime() || 0)); }
 
-  function buildLayout(list) {
+  // Which leaves get rendered when the grove is too big to draw comfortably: soonest
+  // upcoming first, then most recently tended — the rest rest quietly off-canvas.
+  function relevanceSort(list) {
+    const now = Date.now();
+    return list.slice().sort((a, b) => {
+      const da = new Date(a.date + "T" + (a.time || "00:00")).getTime() || 0;
+      const db = new Date(b.date + "T" + (b.time || "00:00")).getTime() || 0;
+      const aFuture = da >= now && !a.done, bFuture = db >= now && !b.done;
+      if (aFuture !== bFuture) return aFuture ? -1 : 1;
+      if (aFuture && bFuture) return da - db;
+      return (b.updatedAt || 0) - (a.updatedAt || 0);
+    });
+  }
+
+  // ---- Dynamic Links: keywords + tags automatically wire leaves into a web ----
+  const STOPWORDS = new Set(["the","and","for","with","this","that","from","have","will","your","about","into","just","been","were","when","what","where","which","their","there","then","than","also","only","some","more","most","such","after","before","over","under","again","once","here","should","could","would","these","those","them","they","its","are","was","not","but","you","all","any","can","did","does","get","had","has","how","let","new","now","one","our","out","see","use","who","why","today","tomorrow"]);
+  function extractKeywords(entry) {
+    const text = ((entry.title || "") + " " + (entry.notes || "")).toLowerCase();
+    const words = text.match(/[a-z0-9']{4,}/g) || [];
+    const seen = new Set(), out = [];
+    for (const w of words) {
+      const clean = w.replace(/'/g, "");
+      if (STOPWORDS.has(clean) || seen.has(clean)) continue;
+      seen.add(clean); out.push(clean);
+      if (out.length >= 6) break;
+    }
+    return out;
+  }
+  function linkTermsOf(entry) {
+    const tags = (entry.tags || "").split(",").map(t => t.trim().toLowerCase()).filter(Boolean);
+    return { tags, keywords: extractKeywords(entry) };
+  }
+  // Every connecting term (tag or keyword) gets its own stable color, so the web reads
+  // like a little legend at a glance — same word, same color, wherever it shows up.
+  function termColor(term) {
+    const h = hashCode("color-" + term) % 360;
+    return `hsl(${h}, 68%, 64%)`;
+  }
+
+  function buildSeedlingLayout() {
+    const vbw = 360, vbh = 300, groundY = vbh - 50, trunkTopX = vbw / 2, trunkH = 62, trunkTopY = groundY - trunkH;
+    const trunkPath = `M ${trunkTopX - 5},${groundY} C ${trunkTopX - 7},${groundY - trunkH*0.6} ${trunkTopX - 2},${groundY - trunkH*0.85} ${trunkTopX - 2},${trunkTopY} L ${trunkTopX + 2},${trunkTopY} C ${trunkTopX + 2},${groundY - trunkH*0.85} ${trunkTopX + 7},${groundY - trunkH*0.6} ${trunkTopX + 5},${groundY} Z`;
+    return { vbX: 0, vbY: 0, width: vbw, height: vbh, groundY, trunkTopX, trunkTopY, trunkPath, limbs: [], seedling: true };
+  }
+
+  function buildLayout(list, opts = {}) {
+    if (!list.length) return opts.trueEmpty ? buildSeedlingLayout() : (() => {
+      const vbw = BASE_VBW, vbh = BASE_VBH, groundY = vbh - GROUND_MARGIN, trunkTopX = vbw / 2, trunkHeight = 110, trunkTopY = groundY - trunkHeight;
+      const tLeft = [], tRight = [];
+      for (let s = 0; s <= 18; s++) {
+        const f = s / 18, y = groundY - f * trunkHeight, wgt = 1 - f, halfw = 18 + wgt * 24, sway = Math.sin(f * Math.PI * 0.6) * 7;
+        tLeft.push([trunkTopX - halfw + sway, y]); tRight.push([trunkTopX + halfw + sway, y]);
+      }
+      const trunkPath = "M " + tLeft.map(p => p.join(",")).join(" L ") + " L " + tRight.slice().reverse().map(p => p.join(",")).join(" L ") + " Z";
+      const PAD = 80;
+      return { vbX: -PAD, vbY: -PAD, width: vbw + PAD * 2, height: vbh + PAD * 2, groundY, trunkTopX, trunkTopY, trunkPath, limbs: [] };
+    })();
+
     const lScale = 1 + Math.min(0.7, list.length * 0.02);
     const vbw = BASE_VBW + Math.min(800, list.length * 26), vbh = BASE_VBH + Math.min(250, list.length * 6);
     const groundY = vbh - GROUND_MARGIN, trunkTopX = vbw / 2, trunkHeight = Math.min(180, 110 + list.length * 1.2) * (0.9 + lScale * 0.1), trunkTopY = groundY - trunkHeight;
 
-    // Real bounding box of everything drawn, so the viewBox can never clip a branch,
-    // twig, leaf or label no matter which direction limbs radiate or how far they reach.
     let bbMinX = Infinity, bbMaxX = -Infinity, bbMinY = Infinity, bbMaxY = -Infinity;
     function extend(x, y, pad) { pad = pad || 0; if (x - pad < bbMinX) bbMinX = x - pad; if (x + pad > bbMaxX) bbMaxX = x + pad; if (y - pad < bbMinY) bbMinY = y - pad; if (y + pad > bbMaxY) bbMaxY = y + pad; }
 
@@ -586,6 +856,8 @@
     const sortedList = getSortedEntries(list), perLimb = LIMBS.map(() => []);
     sortedList.forEach((e, i) => perLimb[i % LIMBS.length].push(e));
 
+    let fillerBudget = 90; // hard cap on decorative twigs regardless of tree size — keeps frame rate steady
+
     const limbs = LIMBS.map((limb, li) => {
       const angleRad = limb.angle * Math.PI / 180, u = [Math.sin(angleRad), -Math.cos(angleRad)], perp = [Math.cos(angleRad), Math.sin(angleRad)];
       const baseLen = limb.baseLen * lScale, spacing = 65 * lScale;
@@ -598,11 +870,11 @@
         const branchAngle = (30 + (seed % 26)) * Math.PI / 180, branchLen = (62 + (seed % 30)) * lScale;
         const [bx, by] = rotVec(u[0], u[1], side * branchAngle), endX = px + bx * branchLen, endY = py + by * branchLen;
         const ctrlX = (px + endX) / 2 + perp[0] * side * 14, ctrlY = (py + endY) / 2 + perp[1] * side * 14;
-        
-        extend(px, py, 12); extend(ctrlX, ctrlY, 12);
-        extend(endX, endY, 72); // room for the leaf shape + its label above it
 
-        const twigs = []; const twigCount = 2 + (seed % 3);
+        extend(px, py, 12); extend(ctrlX, ctrlY, 12);
+        extend(endX, endY, 72);
+
+        const twigs = []; const twigCount = 1 + (seed % 2); // trimmed from 2-4 down to 1-2 for a lighter render
         for (let k = 0; k < twigCount; k++) {
           const t = 0.35 + ((seed >> (k + 2)) % 34) / 100, p = bezierPoint([px, py], [ctrlX, ctrlY], [endX, endY], t);
           const twigSide = (k % 2 === 0) ? side : -side, twigAngle = (26 + ((seed >> (k + 4)) % 22)) * Math.PI / 180;
@@ -622,73 +894,127 @@
       lLeft.forEach(p => extend(p[0], p[1], 4)); lRight.forEach(p => extend(p[0], p[1], 4));
       const limbPath = "M " + lLeft.map(p => p.join(",")).join(" L ") + " L " + lRight.slice().reverse().map(p => p.join(",")).join(" L ") + " Z";
 
-      // Background filler foliage — denser, bigger, and less sparse both the fuller the tree
-      // gets AND the longer this particular limb is, so the big main branches especially
-      // fill out with lush background wood instead of looking sparse.
-      const fillerTwigs = []; const usedD = branches.map((b, j) => baseLen * 0.4 + (j + 1) * spacing);
-      const density = Math.min(1, list.length / 24); // 0 = empty tree, 1 = a busy grove
-      const limbLenFactor = limb.baseLen / 150; // 1.0 for the shortest limb, up to ~1.47 for the longest
-      const growth = density + (limbLenFactor - 1); // combined fullness signal for this limb
-      const fillerStep = Math.max(8, 22 - growth * 10) * lScale;
-      const nearRadius = Math.max(8, 18 - growth * 8);
-      const skipMod = Math.round(4 + growth * 7); // higher = fewer skips = more filler sprigs
-      for (let d = baseLen * 0.14; d < limbLen - 12; d += fillerStep) {
+      // Background filler foliage, rationed from a shared budget so a big grove never spawns
+      // unbounded decorative nodes.
+      const usedD = branches.map((b, j) => baseLen * 0.4 + (j + 1) * spacing);
+      const remainingLimbs = Math.max(1, LIMBS.length - li);
+      const perLimbBudget = Math.max(4, Math.floor(fillerBudget / remainingLimbs));
+      const fillerStep = Math.max(16, limbLen / Math.max(4, perLimbBudget));
+      const fillerTwigs = [];
+      for (let d = baseLen * 0.16; d < limbLen - 12 && fillerTwigs.length < perLimbBudget; d += fillerStep) {
         const baseSeed = hashCode("filler-" + li + "-" + Math.round(d));
-        if (usedD.some(ud => Math.abs(ud - d) < nearRadius) || baseSeed % skipMod === 0) continue;
+        if (usedD.some(ud => Math.abs(ud - d) < 16)) continue;
         const [cx, cy] = centerAt(d);
-        const sides = (growth > 0.4 && baseSeed % 3 !== 0) ? [1, -1] : [(baseSeed % 2 === 0) ? 1 : -1];
-        sides.forEach((side, si) => {
-          const seed = hashCode("filler-" + li + "-" + Math.round(d) + "-" + si);
-          const fAngle = (32 + (seed % 28)) * Math.PI / 180;
-          const fLen = (18 + (seed % 24)) * lScale * (0.85 + limbLenFactor * 0.4);
-          const [fx, fy] = rotVec(u[0], u[1], side * fAngle);
-          const fx2 = cx + fx * fLen, fy2 = cy + fy * fLen;
-          const deep = seed % 5 === 0; // occasional smaller, dimmer background sprig for depth
-          const sizeFactor = 0.85 + limbLenFactor * 0.4;
-          fillerTwigs.push({ x1: cx, y1: cy, x2: fx2, y2: fy2, angle: Math.atan2(fx, -fy) * 180 / Math.PI, deep, sizeFactor });
-          extend(fx2, fy2, 18 + fLen * 0.3);
-        });
+        const side = (baseSeed % 2 === 0) ? 1 : -1;
+        const seed = hashCode("filler-" + li + "-" + Math.round(d) + "-0");
+        const fAngle = (32 + (seed % 28)) * Math.PI / 180;
+        const fLen = (16 + (seed % 20)) * lScale;
+        const [fx, fy] = rotVec(u[0], u[1], side * fAngle);
+        const fx2 = cx + fx * fLen, fy2 = cy + fy * fLen;
+        const deep = seed % 4 === 0;
+        fillerTwigs.push({ x1: cx, y1: cy, x2: fx2, y2: fy2, angle: Math.atan2(fx, -fy) * 180 / Math.PI, deep, sizeFactor: 1 });
+        extend(fx2, fy2, 18 + fLen * 0.3);
       }
+      fillerBudget -= fillerTwigs.length;
+
       return { path: limbPath, branches, fillerTwigs };
     });
 
-    // Ground ellipse extends a bit below/beside the trunk base — make sure it's included too.
     extend(trunkTopX - vbw * 0.36, groundY + 34); extend(trunkTopX + vbw * 0.36, groundY + 34);
 
     const PAD = 60;
     const vbX = bbMinX - PAD, vbY = bbMinY - PAD;
     const finalW = (bbMaxX - bbMinX) + PAD * 2, finalH = (bbMaxY - bbMinY) + PAD * 2;
-    return { vbX, vbY, width: finalW, height: finalH, groundY, trunkTopX, trunkPath, limbs };
+    return { vbX, vbY, width: finalW, height: finalH, groundY, trunkTopX, trunkTopY, trunkPath, limbs };
   }
 
-  function matchesFilter(e) {
+  // Status/archive determine what's physically on the tree. Free-text search no longer
+  // rearranges branches — it just highlights + pans, see applySearchHighlight().
+  function matchesStatus(e) {
     if (statusFilter === "done" && !e.done) return false;
     if (statusFilter === "upcoming" && e.done) return false;
-    const q = filterText.trim().toLowerCase();
-    return !q || (e.title + " " + e.location + " " + e.notes + " " + (e.tags || "")).toLowerCase().includes(q);
+    return true;
+  }
+  function matchesText(e, q) {
+    if (!q) return true;
+    return (e.title + " " + e.location + " " + e.notes + " " + (e.tags || "")).toLowerCase().includes(q);
   }
 
   function updateLeafCount() {
     const el = document.getElementById("leafCount");
     if (!el) return;
-    if (!entries.length) { el.textContent = ""; return; }
-    const doneCount = entries.filter(e => e.done).length;
-    el.textContent = `${entries.length} leaf${entries.length === 1 ? '' : 'ves'} · ${doneCount} turned`;
+    const active = entries.filter(e => !e.archived);
+    if (!active.length) { el.textContent = ""; return; }
+    const doneCount = active.filter(e => e.done).length;
+    const compact = window.innerWidth < 480;
+    if (compact) {
+      el.textContent = `${active.length}·${doneCount}✓${lastOverflowCount ? ` +${lastOverflowCount}` : ''}`;
+    } else {
+      el.textContent = `${active.length} leaf${active.length === 1 ? '' : 'ves'} · ${doneCount} turned${lastOverflowCount ? ` · +${lastOverflowCount} off-tree` : ''}`;
+    }
+  }
+
+  function updateUgBadge() {
+    const el = document.getElementById('ugBadge');
+    if (!el) return;
+    const n = entries.filter(e => e.archived).length;
+    el.textContent = n ? n : '';
+  }
+
+  function updateSearchBadge(q, count) {
+    const el = document.getElementById('searchBadge');
+    if (!el) return;
+    if (!q) { el.textContent = ''; el.className = 'search-badge'; return; }
+    if (count === 0) { el.textContent = 'none found'; el.className = 'search-badge none'; }
+    else { el.textContent = count + ' found ⏎'; el.className = 'search-badge match'; }
   }
 
   function render() {
     const svg = document.getElementById("treeSvg");
-    const list = entries.filter(matchesFilter);
-    const layout = buildLayout(list);
+    let defs = `<defs><radialGradient id="groundGlow" cx="50%" cy="100%" r="70%"><stop offset="0%" stop-color="rgba(74,222,128,0.12)"/><stop offset="100%" stop-color="rgba(74,222,128,0)"/></radialGradient></defs>`;
+
+    // Only status + archive affect what's actually built into the tree — and the render
+    // is capped so a big grove never has to draw everything at once (this is the main
+    // lag fix: fewer live leaves on screen, the rest rest safely off-canvas).
+    let list = entries.filter(e => !e.archived && matchesStatus(e));
+    const totalActive = entries.filter(e => !e.archived).length;
+    const MAX_RENDERED = window.innerWidth < 480 ? 16 : 24;
+    lastOverflowCount = 0;
+    if (list.length > MAX_RENDERED) {
+      const sorted = relevanceSort(list);
+      lastOverflowCount = list.length - MAX_RENDERED;
+      list = sorted.slice(0, MAX_RENDERED);
+    }
+
+    const layout = buildLayout(list, { trueEmpty: totalActive === 0 });
     lastLayout = layout;
 
-    let defs = `<defs><radialGradient id="groundGlow" cx="50%" cy="100%" r="70%"><stop offset="0%" stop-color="rgba(74,222,128,0.12)"/><stop offset="100%" stop-color="rgba(74,222,128,0)"/></radialGradient></defs>`;
+    if (layout.seedling) {
+      svg.setAttribute("width", layout.width);
+      svg.setAttribute("height", layout.height);
+      svg.setAttribute("viewBox", `${layout.vbX} ${layout.vbY} ${layout.width} ${layout.height}`);
+      if (!hasAutoCentered) { setTimeout(() => { centerTree(layout); hasAutoCentered = true; }, 50); }
+      const ground = `<ellipse cx="${layout.trunkTopX}" cy="${layout.groundY + 8}" rx="${layout.width * 0.28}" ry="20" fill="url(#groundGlow)"/>`;
+      const budD = "M0,-1 C -5,-5 -4,-10 -1,-13 L0,-15 L1,-13 C 4,-10 5,-5 0,-1 Z";
+      const seedLeaves = `
+        <g class="leaf-group leaf-bud" style="animation-duration:4.2s;" transform="translate(${layout.trunkTopX - 9},${layout.trunkTopY}) rotate(-28)"><path class="leaf-body" d="${budD}" style="--leaf-fill:#6fe9a0; --leaf-stroke:#a8ffce;"/></g>
+        <g class="leaf-group leaf-bud" style="animation-duration:3.6s;" transform="translate(${layout.trunkTopX + 9},${layout.trunkTopY}) rotate(28)"><path class="leaf-body" d="${budD}" style="--leaf-fill:#6fe9a0; --leaf-stroke:#a8ffce;"/></g>
+      `;
+      const msg = `<text class="empty-note" x="${layout.trunkTopX}" y="${layout.groundY - 150}">A seedling, waiting — press ✦ to plant your first leaf</text>`;
+      svg.innerHTML = defs + ground + `<path class="trunk" d="${layout.trunkPath}"/>` + seedLeaves + msg;
+      updateLeafCount(); updateUgBadge();
+      document.getElementById("clearAll").disabled = entries.length === 0;
+      applySearchHighlight();
+      clearFocus();
+      return;
+    }
 
     let limbPaths = "", branchesSvg = "", fillerSvg = "", leavesSvg = "";
     const miniLeafD = "M0,-1 C -7,-7 -5,-16 -1,-20 L0,-23 L1,-20 C 5,-16 7,-7 0,-1 Z";
     const budD = "M0,-1 C -5,-5 -4,-10 -1,-13 L0,-15 L1,-13 C 4,-10 5,-5 0,-1 Z";
     const leafD = "M0,-2 C -13,-13 -9,-30 -3,-38 L0,-45 L3,-38 C 9,-30 13,-13 0,-2 Z";
-    const positionById = {}; // for drawing tag-link connectors after the tree itself is built
+    const positionById = {};
+    const heavy = list.length > 14; // above this, drop the sway animation to keep frame rate smooth
 
     layout.limbs.forEach(limb => {
       limbPaths += `<path class="trunk" d="${limb.path}"/>`;
@@ -698,27 +1024,28 @@
         const strokeW = (tw.deep ? 1.8 : 2.5) * tw.sizeFactor;
         return `<path class="twig${deepCls}" d="M ${tw.x1},${tw.y1} L ${tw.x2},${tw.y2}" stroke-width="${strokeW.toFixed(2)}"/><g transform="translate(${tw.x2},${tw.y2}) rotate(${tw.angle}) scale(${leafScale.toFixed(2)})"><path class="mini-leaf${deepCls}" d="${miniLeafD}"/></g>`;
       }).join("");
+
       limb.branches.forEach(b => {
         const strokeW = 5 + (hashCode(b.entry.id) % 3);
         branchesSvg += `<path class="branch" d="M ${b.startX},${b.startY} Q ${b.ctrlX},${b.ctrlY} ${b.endX},${b.endY}" stroke-width="${strokeW}"/>`;
         branchesSvg += b.twigs.map(tw => `<path class="twig" d="M ${tw.x1},${tw.y1} L ${tw.x2},${tw.y2}" stroke-width="3"/><g transform="translate(${tw.x2},${tw.y2}) rotate(${tw.angle}) scale(1.3)"><path class="mini-leaf" d="${miniLeafD}"/></g>`).join("");
-        
-        const e = b.entry, done = e.done ? "done" : "", isNew = e.id === newLeafId ? "new-leaf" : "";
+
+        const e = b.entry, done = e.done ? "done" : "", isNew = e.id === newLeafId;
         const growth = growthStage(wordCount(e)), fresh = leafFreshness(e.updatedAt);
         const jitter = 0.95 + (hashCode(e.id + "s") % 20) / 100;
         const lscale = jitter * growth.scale, dur = (3 + (hashCode(e.id + "d") % 20) / 10).toFixed(1), delay = (-(hashCode(e.id + "e") % 30) / 10).toFixed(1);
         const budCls = growth.bud ? " leaf-bud" : "", freshCls = (fresh.fresh && !e.done) ? " leaf-fresh" : "";
+        const stillCls = (heavy && !isNew) ? " still" : "";
         const leafStyle = e.done ? "" : `--leaf-fill:${fresh.fill}; --leaf-stroke:${fresh.stroke};`;
         const shapeD = growth.bud ? budD : leafD;
         const extraVeins = (!growth.bud && wordCount(e) >= 60)
           ? `<path class="leaf-vein" d="M0,-14 L-5,-22"/><path class="leaf-vein" d="M0,-20 L5,-28"/>` : "";
 
         positionById[e.id] = { x: b.endX, y: b.endY };
-        // Track coordinate for camera panning
         if (isNew) setTimeout(() => panToNode(b.endX, b.endY), 50);
 
         leavesSvg += `
-          <g class="leaf-group ${done}${isNew ? ' new-leaf' : ''}${budCls}${freshCls}" data-id="${e.id}" tabindex="0" role="button" aria-label="${escapeHtml(e.title || 'Untitled leaf')}" style="animation-duration: ${dur}s; animation-delay: ${delay}s;">
+          <g class="leaf-group ${done}${isNew ? ' new-leaf' : ''}${budCls}${freshCls}${stillCls}" data-id="${e.id}" tabindex="0" role="button" aria-label="${escapeHtml(e.title || 'Untitled leaf')}" style="animation-duration: ${dur}s; animation-delay: ${delay}s;">
             <title>${escapeHtml(e.title || 'Untitled leaf')}\n${e.date}</title>
             <circle class="hit" cx="${b.endX}" cy="${b.endY - 16 * lscale}" r="45"/>
             <g transform="translate(${b.endX},${b.endY}) rotate(${b.angleDeg}) scale(${lscale.toFixed(2)})" style="${leafStyle}">
@@ -731,35 +1058,56 @@
       });
     });
 
-    // ---- knowledge-graph tag links: connect leaves that share a tag ----
+    // ---- Dynamic Links: an automatic web between leaves that share a tag or a keyword ----
+    // Tags are the strongest signal (drawn first, thicker, higher priority); shared keywords
+    // pulled from title/notes fill in the rest, neural-net style. Every distinct connecting
+    // term gets its own stable color, so different tags/keywords read as different colored
+    // threads through the tree, and a shared budget keeps a big grove from turning to static.
     let linksSvg = "";
-    const byTag = {};
-    list.forEach(e => (e.tags || "").split(",").map(t => t.trim().toLowerCase()).filter(Boolean).forEach(t => {
-      (byTag[t] = byTag[t] || []).push(e.id);
-    }));
-    let linkMinX = layout.vbX, linkMinY = layout.vbY, linkMaxX = layout.vbX + layout.width, linkMaxY = layout.vbY + layout.height;
-    const seenPairs = new Set();
-    Object.values(byTag).forEach(ids => {
-      for (let i = 0; i < ids.length; i++) {
-        for (let j = i + 1; j < ids.length; j++) {
-          const a = positionById[ids[i]], b2 = positionById[ids[j]];
-          if (!a || !b2) continue;
+    const termMap = new Map(); // key -> { term, type, ids: [] }
+    list.forEach(e => {
+      const { tags, keywords } = linkTermsOf(e);
+      tags.forEach(t => {
+        const key = "tag:" + t;
+        if (!termMap.has(key)) termMap.set(key, { term: t, type: "tag", ids: [] });
+        termMap.get(key).ids.push(e.id);
+      });
+      keywords.forEach(k => {
+        const key = "kw:" + k;
+        if (!termMap.has(key)) termMap.set(key, { term: k, type: "keyword", ids: [] });
+        termMap.get(key).ids.push(e.id);
+      });
+    });
+
+    const pairMap = new Map();
+    let linkBudget = 70;
+    function addPairsForTerm(ids, term, type) {
+      for (let i = 0; i < ids.length && linkBudget > 0; i++) {
+        for (let j = i + 1; j < ids.length && linkBudget > 0; j++) {
           const key = ids[i] < ids[j] ? ids[i] + "|" + ids[j] : ids[j] + "|" + ids[i];
-          if (seenPairs.has(key)) continue;
-          seenPairs.add(key);
-          const mx = (a.x + b2.x) / 2, my = (a.y + b2.y) / 2 - Math.hypot(b2.x - a.x, b2.y - a.y) * 0.18;
-          linkMinX = Math.min(linkMinX, mx - 8); linkMaxX = Math.max(linkMaxX, mx + 8);
-          linkMinY = Math.min(linkMinY, my - 8); linkMaxY = Math.max(linkMaxY, my + 8);
-          linksSvg += `<path class="tag-link" data-a="${ids[i]}" data-b="${ids[j]}" d="M ${a.x},${a.y} Q ${mx},${my} ${b2.x},${b2.y}"/>`;
+          if (pairMap.has(key)) continue;
+          pairMap.set(key, { a: ids[i], b: ids[j], term, type });
+          linkBudget--;
         }
       }
+    }
+    termMap.forEach(t => { if (t.type === "tag" && t.ids.length > 1) addPairsForTerm(t.ids, t.term, "tag"); });
+    termMap.forEach(t => { if (t.type === "keyword" && t.ids.length > 1) addPairsForTerm(t.ids, t.term, "keyword"); });
+
+    let linkMinX = layout.vbX, linkMinY = layout.vbY, linkMaxX = layout.vbX + layout.width, linkMaxY = layout.vbY + layout.height;
+    pairMap.forEach(({ a: idA, b: idB, term, type }) => {
+      const a = positionById[idA], b2 = positionById[idB];
+      if (!a || !b2) return;
+      const mx = (a.x + b2.x) / 2, my = (a.y + b2.y) / 2 - Math.hypot(b2.x - a.x, b2.y - a.y) * 0.18;
+      linkMinX = Math.min(linkMinX, mx - 8); linkMaxX = Math.max(linkMaxX, mx + 8);
+      linkMinY = Math.min(linkMinY, my - 8); linkMaxY = Math.max(linkMaxY, my + 8);
+      const color = termColor(term);
+      linksSvg += `<path class="tag-link link-${type}" data-a="${idA}" data-b="${idB}" style="--link-color:${color}" d="M ${a.x},${a.y} Q ${mx},${my} ${b2.x},${b2.y}"><title>${escapeHtml(term)}</title></path>`;
     });
-    // Widen the viewBox if any connector arc bows out past the tree's own bounds.
     if (linkMinX < layout.vbX || linkMinY < layout.vbY || linkMaxX > layout.vbX + layout.width || linkMaxY > layout.vbY + layout.height) {
       layout.vbX = linkMinX; layout.vbY = linkMinY; layout.width = linkMaxX - linkMinX; layout.height = linkMaxY - linkMinY;
     }
 
-    // Explicit px sizing required for custom Pan/Zoom logic to work smoothly
     svg.setAttribute("width", layout.width);
     svg.setAttribute("height", layout.height);
     svg.setAttribute("viewBox", `${layout.vbX} ${layout.vbY} ${layout.width} ${layout.height}`);
@@ -768,13 +1116,11 @@
     let ground = `<ellipse cx="${layout.trunkTopX}" cy="${layout.groundY + 8}" rx="${layout.width * 0.35}" ry="24" fill="url(#groundGlow)"/>`;
     let emptyMsg = "";
     if (list.length === 0) {
-      const msg = entries.length === 0 ? "No leaves yet — press ✦ to plant" : "No leaves match your search";
-      emptyMsg = `<text class="empty-note" x="${layout.trunkTopX}" y="${layout.groundY - 240}">${escapeHtml(msg)}</text>`;
+      emptyMsg = `<text class="empty-note" x="${layout.trunkTopX}" y="${layout.groundY - 200}">No leaves in this view</text>`;
     }
-    
+
     svg.innerHTML = defs + ground + `<g id="woodGroup" class="wood-group" style="transform-origin:${layout.trunkTopX}px ${layout.groundY}px"><path class="trunk" d="${layout.trunkPath}"/>${limbPaths}${fillerSvg}${branchesSvg}</g><g id="linkGroup">${linksSvg}</g><g id="leafGroup">${leavesSvg}</g>${emptyMsg}`;
 
-    // Hovering/focusing a leaf highlights the knowledge-graph links touching it.
     svg.querySelectorAll(".leaf-group").forEach(g => {
       const id = g.getAttribute("data-id");
       const related = svg.querySelectorAll(`.tag-link[data-a="${id}"], .tag-link[data-b="${id}"]`);
@@ -786,23 +1132,123 @@
       g.addEventListener("blur", () => setActive(false));
     });
 
-    // Click handler with drag-cancellation
     svg.querySelectorAll(".leaf-group").forEach(g => {
+      const entry = entries.find(e => e.id === g.getAttribute("data-id"));
       g.addEventListener("click", (e) => {
-        // If the user moved their finger/mouse more than 8px between down and up, it was a drag, NOT a click.
+        if (g._peekSuppress) return;
         const dist = Math.hypot(e.clientX - clickStartX, e.clientY - clickStartY);
-        if (dist > 8) return; 
+        if (dist > 8) return;
         openModal(g.getAttribute("data-id"));
       });
       g.addEventListener("keydown", (e) => {
         if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openModal(g.getAttribute("data-id")); }
       });
+      if (entry) attachPeek(g, entry);
     });
 
     updateLeafCount();
+    updateUgBadge();
     document.getElementById("clearAll").disabled = entries.length === 0;
+    applySearchHighlight();
+
+    if (focusedLeafId) {
+      const stillThere = entries.find(e => e.id === focusedLeafId && !e.archived && matchesStatus(e));
+      if (stillThere) setFocus(focusedLeafId); else clearFocus();
+    }
 
     if (newLeafId) setTimeout(() => { newLeafId = null; }, 700);
+
+    if (lastOverflowCount > 0 && !overflowNudged) {
+      overflowNudged = true;
+      showToast(`${lastOverflowCount} older leaf${lastOverflowCount === 1 ? '' : 'ves'} resting off-tree — prune to bring them back`, {
+        actionLabel: "Open Underground", onAction: openUnderground, duration: 9000
+      });
+    }
+  }
+
+  /* ---------- leaf peek: long-press to preview without opening the full note ---------- */
+  function attachPeek(g, entry) {
+    let timer = null, active = false, sx = 0, sy = 0;
+    function begin(x, y) {
+      sx = x; sy = y; active = false;
+      clearTimeout(timer);
+      timer = setTimeout(() => { active = true; showPeek(entry, x, y); }, 480);
+    }
+    function move(x, y) {
+      if (Math.hypot(x - sx, y - sy) > 12) {
+        clearTimeout(timer);
+        if (active) { hidePeek(); active = false; }
+      }
+    }
+    function end() {
+      clearTimeout(timer);
+      if (active) {
+        hidePeek(); active = false;
+        g._peekSuppress = true; setTimeout(() => { g._peekSuppress = false; }, 80);
+      }
+    }
+    g.addEventListener('touchstart', e => begin(e.touches[0].clientX, e.touches[0].clientY), {passive: true});
+    g.addEventListener('touchmove', e => move(e.touches[0].clientX, e.touches[0].clientY), {passive: true});
+    g.addEventListener('touchend', end);
+    g.addEventListener('touchcancel', end);
+    g.addEventListener('mousedown', e => { if (e.button !== 0) return; begin(e.clientX, e.clientY); });
+    g.addEventListener('mousemove', e => { if (timer || active) move(e.clientX, e.clientY); });
+    g.addEventListener('mouseup', end);
+    g.addEventListener('mouseleave', () => { if (active) end(); else clearTimeout(timer); });
+  }
+
+  function showPeek(entry, x, y) {
+    const el = document.getElementById('peekBubble');
+    const fresh = leafFreshness(entry.updatedAt);
+    const tags = (entry.tags || "").split(",").map(t => t.trim()).filter(Boolean);
+    el.innerHTML = `
+      <div class="pk-title">${escapeHtml(entry.title || 'Untitled leaf')}${entry.done ? ' ✓' : ''}</div>
+      <div class="pk-meta">${[escapeHtml(entry.date || ''), entry.time ? escapeHtml(entry.time) : '', entry.location ? escapeHtml(entry.location) : ''].filter(Boolean).join(' · ')}${entry.date || entry.time || entry.location ? ' · ' : ''}${freshnessLabel(fresh.days)}</div>
+      ${entry.notes ? `<div class="pk-notes">${escapeHtml(truncate(entry.notes, 140))}</div>` : ''}
+      ${tags.length ? `<div class="pk-tags">${tags.map(t => `<span class="pk-tag">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
+      <div class="pk-hint">release to dismiss · tap to open</div>
+    `;
+    const vw = window.innerWidth;
+    const clampedX = Math.min(Math.max(x, 140), vw - 140);
+    const clampedY = Math.max(y, 110);
+    el.style.left = clampedX + 'px'; el.style.top = clampedY + 'px';
+    el.classList.add('show');
+    if (navigator.vibrate) { try { navigator.vibrate(12); } catch (err) {} }
+  }
+  function hidePeek() { document.getElementById('peekBubble').classList.remove('show'); }
+
+  /* ---------- dynamic search: camera pans/zooms to matches, tree stays put ---------- */
+  function applySearchHighlight() {
+    const svg = document.getElementById('treeSvg');
+    const q = filterText.trim().toLowerCase();
+    const groups = svg.querySelectorAll('.leaf-group[data-id]');
+    const matches = [];
+    groups.forEach(g => {
+      const id = g.getAttribute('data-id');
+      const entry = entries.find(e => e.id === id);
+      if (!entry) return;
+      if (!q) { g.classList.remove('search-dim', 'search-match'); return; }
+      const isMatch = matchesText(entry, q);
+      g.classList.toggle('search-match', isMatch);
+      g.classList.toggle('search-dim', !isMatch);
+      if (isMatch) matches.push(entry);
+    });
+    searchMatches = matches; searchMatchIndex = 0;
+    updateSearchBadge(q, matches.length);
+  }
+
+  function runSearch(newText) {
+    const prevQ = filterText.trim();
+    filterText = newText;
+    const q = filterText.trim();
+    applySearchHighlight();
+    if (q && q !== prevQ && searchMatches.length) panToEntry(searchMatches[0], { focus: true });
+  }
+
+  function cycleSearchMatch() {
+    if (!searchMatches.length) return;
+    searchMatchIndex = (searchMatchIndex + 1) % searchMatches.length;
+    panToEntry(searchMatches[searchMatchIndex], { focus: true });
   }
 
   /* ---------- modal interactions ---------- */
@@ -821,13 +1267,16 @@
         <div class="field"><label>Date</label><input type="date" id="f-date" value="${entry.date || ''}"></div>
         <div class="field"><label>Time</label><input type="time" id="f-time" value="${entry.time || ''}"></div>
         <div class="field full"><label>Location</label><input type="text" id="f-location" placeholder="e.g. The old oak library" value="${escapeHtml(entry.location)}"></div>
-        <div class="field full"><label>Tags</label><input type="text" id="f-tags" placeholder="e.g. project-x, ideas (comma separated — links related leaves)" value="${escapeHtml(entry.tags || '')}"></div>
+        <div class="field full"><label>Tags</label><input type="text" id="f-tags" placeholder="e.g. project-x, ideas — shared tags (and shared words in your notes) automatically wire related leaves together" value="${escapeHtml(entry.tags || '')}"></div>
       </div>
       <div class="notes-label">Notes &amp; Details</div>
       <textarea class="notes-area" id="f-notes" placeholder="What needs doing, remembering, or tending to…">${escapeHtml(entry.notes)}</textarea>
       <div class="modal-footer">
         <label class="done-toggle"><input type="checkbox" id="f-done" ${entry.done ? 'checked' : ''}> Mark as complete</label>
-        <button class="delete-btn" id="deleteBtn">✕ Remove Leaf</button>
+        <div class="footer-actions">
+          <button class="prune-btn" id="pruneBtn" title="Move to the Underground">↓ Prune</button>
+          <button class="delete-btn" id="deleteBtn">✕ Remove</button>
+        </div>
       </div>
     `;
 
@@ -841,12 +1290,13 @@
     ["title", "date", "time", "location", "tags", "notes"].forEach(f => {
       document.getElementById("f-" + f).addEventListener("input", debounce(() => {
         entry[f] = document.getElementById("f-" + f).value;
-        entry.updatedAt = Date.now(); // editing is how you "tend" a leaf and keep it fresh
+        entry.updatedAt = Date.now();
         persist(); refreshGrowthReadout(); render();
       }, 300));
     });
 
     document.getElementById("f-done").addEventListener("change", (ev) => { entry.done = ev.target.checked; persist(); render(); });
+    document.getElementById("pruneBtn").addEventListener("click", () => pruneEntry(id));
     document.getElementById("deleteBtn").addEventListener("click", () => {
       const idx = entries.findIndex(e => e.id === id);
       if (idx === -1) return;
@@ -863,11 +1313,6 @@
 
   function closeModal() { document.getElementById("overlay").classList.remove("show"); activeId = null; }
   document.getElementById("overlay").addEventListener("click", (e) => { if (e.target.id === "overlay") closeModal(); });
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && document.getElementById("overlay").classList.contains("show")) closeModal();
-  });
-
-  function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
 
   function persist() {
     saveEntries(entries).then(ok => {
@@ -877,22 +1322,115 @@
         status.textContent = "✓ Saved to your grove"; status.classList.remove("err"); status.classList.add("on");
       } else {
         status.textContent = "⚠ Couldn't save — check your connection"; status.classList.remove("on"); status.classList.add("err");
-        return; // leave the warning up rather than fading it out
+        return;
       }
       clearTimeout(persist._t);
       persist._t = setTimeout(() => { if (status) { status.textContent = "Saved to your grove"; status.classList.remove("on"); } }, 1500);
     });
   }
 
+  /* ---------- pruning / the Underground (archive) ---------- */
+  function pruneEntry(id) {
+    const entry = entries.find(e => e.id === id);
+    if (!entry) return;
+    entry.archived = true; entry.archivedAt = Date.now();
+    persist(); closeModal(); render();
+    showToast(`"${truncate(entry.title, 24)}" sent to the Underground`, {
+      actionLabel: "Undo",
+      onAction: () => { entry.archived = false; persist(); render(); }
+    });
+  }
+
+  function autoPrune() {
+    const cutoff = Date.now() - 30 * 86400000;
+    const toPrune = entries.filter(e => !e.archived && e.done && (e.updatedAt || 0) < cutoff);
+    if (!toPrune.length) { showToast("Nothing old enough to prune yet"); return; }
+    toPrune.forEach(e => { e.archived = true; e.archivedAt = Date.now(); });
+    persist(); render(); renderUnderground();
+    showToast(`${toPrune.length} leaf${toPrune.length === 1 ? '' : 'ves'} pruned to the Underground`, {
+      actionLabel: "Undo", duration: 8000,
+      onAction: () => { toPrune.forEach(e => { e.archived = false; }); persist(); render(); renderUnderground(); }
+    });
+  }
+
+  function restoreEntry(id) {
+    const e = entries.find(x => x.id === id);
+    if (!e) return;
+    e.archived = false; e.updatedAt = Date.now(); newLeafId = id;
+    persist(); closeUnderground(); render();
+    showToast(`"${truncate(e.title, 24)}" returned to the tree`);
+  }
+
+  function forgetForever(id) {
+    if (!confirm("Forget this leaf forever? This cannot be undone.")) return;
+    const idx = entries.findIndex(x => x.id === id);
+    if (idx === -1) return;
+    entries.splice(idx, 1);
+    persist(); renderUnderground(); updateLeafCount(); updateUgBadge();
+  }
+
+  function renderUnderground() {
+    const card = document.getElementById('ugCard');
+    const archived = entries.filter(e => e.archived).sort((a, b) => (b.archivedAt || 0) - (a.archivedAt || 0));
+    updateUgBadge();
+    let rows = archived.map(e => {
+      const fresh = leafFreshness(e.archivedAt || e.updatedAt);
+      return `
+        <div class="ug-row" data-id="${e.id}">
+          <div class="ug-row-main">
+            <div class="ug-row-title">${escapeHtml(e.title || 'Untitled leaf')}${e.done ? ' ✓' : ''}</div>
+            <div class="ug-row-meta">${[escapeHtml(e.date || ''), e.time ? escapeHtml(e.time) : ''].filter(Boolean).join(' ')}${e.date ? ' · ' : ''}buried ${Math.round(fresh.days)}d ago</div>
+          </div>
+          <div class="ug-row-actions">
+            <button class="ug-restore" data-id="${e.id}" title="Restore to the tree" aria-label="Restore">↑</button>
+            <button class="ug-forget" data-id="${e.id}" title="Forget forever" aria-label="Forget forever">✕</button>
+          </div>
+        </div>`;
+    }).join('');
+    if (!archived.length) rows = `<div class="ug-empty">Nothing buried yet.<br>Pruned and old completed leaves rest here, out of the tree's way.</div>`;
+
+    card.innerHTML = `
+      <div class="drag-handle"></div>
+      <div class="modal-top">
+        <div><div class="title-input" style="cursor:default;">The Underground</div></div>
+        <button class="close-btn" id="ugClose" aria-label="Close">✕</button>
+      </div>
+      <div class="ug-subhead">${archived.length} leaf${archived.length === 1 ? '' : 'ves'} resting below the roots</div>
+      <div class="ug-bulk"><button class="prune-btn" id="ugAutoPrune">🍂 Auto-prune completed leaves, 30d+ untouched</button></div>
+      <div class="ug-list">${rows}</div>
+    `;
+    document.getElementById('ugClose').addEventListener('click', closeUnderground);
+    const autoBtn = document.getElementById('ugAutoPrune');
+    if (autoBtn) autoBtn.addEventListener('click', autoPrune);
+    card.querySelectorAll('.ug-restore').forEach(b => b.addEventListener('click', () => restoreEntry(b.getAttribute('data-id'))));
+    card.querySelectorAll('.ug-forget').forEach(b => b.addEventListener('click', () => forgetForever(b.getAttribute('data-id'))));
+  }
+
+  function openUnderground() { renderUnderground(); document.getElementById('ugOverlay').classList.add('show'); }
+  function closeUnderground() { document.getElementById('ugOverlay').classList.remove('show'); }
+  document.getElementById('undergroundBtn').addEventListener('click', openUnderground);
+  document.getElementById('ugOverlay').addEventListener('click', (e) => { if (e.target.id === 'ugOverlay') closeUnderground(); });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      if (document.getElementById("overlay").classList.contains("show")) closeModal();
+      if (document.getElementById("ugOverlay").classList.contains("show")) closeUnderground();
+    }
+  });
+
   /* ---------- global events ---------- */
   document.getElementById("fab").addEventListener("click", () => {
     if (!dataReady) return;
-    const e = { id: uid(), title: "", date: new Date().toISOString().slice(0, 10), time: "", location: "", notes: "", tags: "", done: false, updatedAt: Date.now() };
+    const e = { id: uid(), title: "", date: new Date().toISOString().slice(0, 10), time: "", location: "", notes: "", tags: "", done: false, archived: false, archivedAt: null, updatedAt: Date.now() };
     entries.push(e); newLeafId = e.id; persist(); render();
     setTimeout(() => openModal(e.id), 700);
   });
 
-  document.getElementById("search").addEventListener("input", (e) => { filterText = e.target.value; render(); });
+  document.getElementById("search").addEventListener("input", debounce((e) => { runSearch(e.target.value); }, 150));
+  document.getElementById("search").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); cycleSearchMatch(); }
+    if (e.key === "Escape") { e.target.value = ""; runSearch(""); e.target.blur(); }
+  });
 
   document.querySelectorAll(".chip[data-filter]").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -904,7 +1442,7 @@
 
   function jumpToNext() {
     if (!lastLayout) return;
-    const visible = entries.filter(matchesFilter);
+    const visible = entries.filter(e => !e.archived && matchesStatus(e));
     if (!visible.length) { showToast("No leaves match right now"); return; }
     const now = Date.now();
     let target = null, bestDiff = Infinity;
@@ -914,10 +1452,7 @@
       if (!isNaN(dt)) { const diff = dt - now; if (diff >= 0 && diff < bestDiff) { bestDiff = diff; target = e; } }
     });
     if (!target) target = visible.slice().reverse().find(e => !e.done) || visible[visible.length - 1];
-    for (const limb of lastLayout.limbs) {
-      const b = limb.branches.find(br => br.entry.id === target.id);
-      if (b) { panToNode(b.endX, b.endY); return; }
-    }
+    panToEntry(target, { focus: true });
   }
   document.getElementById("jumpNext").addEventListener("click", jumpToNext);
 
@@ -925,31 +1460,32 @@
   document.getElementById("zoomOutBtn").addEventListener("click", () => zoomBy(-0.25));
   document.getElementById("recenterBtn").addEventListener("click", () => { if (lastLayout) centerTree(lastLayout, true); });
 
-  // Keyboard shortcuts — skipped while typing in a field or while the modal is open.
   document.addEventListener("keydown", (e) => {
     const tag = (e.target.tagName || "").toLowerCase();
     if (tag === "input" || tag === "textarea" || e.target.isContentEditable) return;
     if (document.getElementById("overlay").classList.contains("show")) return;
+    if (document.getElementById("ugOverlay").classList.contains("show")) return;
     const step = 70;
     switch (e.key) {
-      case "ArrowUp": panY += step; updateTransform(true); e.preventDefault(); break;
-      case "ArrowDown": panY -= step; updateTransform(true); e.preventDefault(); break;
-      case "ArrowLeft": panX += step; updateTransform(true); e.preventDefault(); break;
-      case "ArrowRight": panX -= step; updateTransform(true); e.preventDefault(); break;
+      case "ArrowUp": panY += step; updateTransform(true); refreshFocusDebounced(); e.preventDefault(); break;
+      case "ArrowDown": panY -= step; updateTransform(true); refreshFocusDebounced(); e.preventDefault(); break;
+      case "ArrowLeft": panX += step; updateTransform(true); refreshFocusDebounced(); e.preventDefault(); break;
+      case "ArrowRight": panX -= step; updateTransform(true); refreshFocusDebounced(); e.preventDefault(); break;
       case "+": case "=": zoomBy(0.2); e.preventDefault(); break;
       case "-": case "_": zoomBy(-0.2); e.preventDefault(); break;
       case "0": if (lastLayout) centerTree(lastLayout, true); e.preventDefault(); break;
       case "/": document.getElementById("search").focus(); e.preventDefault(); break;
       case "j": case "J": jumpToNext(); e.preventDefault(); break;
       case "n": case "N": document.getElementById("fab").click(); e.preventDefault(); break;
+      case "u": case "U": openUnderground(); e.preventDefault(); break;
     }
   });
 
   window.addEventListener("resize", debounce(() => { if (lastLayout) centerTree(lastLayout, true); }, 200));
 
   document.getElementById("clearAll").addEventListener("click", () => {
-    if (entries.length === 0 || !confirm("Let the wind take every leaf?")) return;
-    closeModal();
+    if (entries.length === 0 || !confirm("Let the wind take every leaf — including anything buried in the Underground?")) return;
+    closeModal(); closeUnderground();
     const removedEntries = entries.slice();
     const svg = document.getElementById("treeSvg"), leaves = svg.querySelectorAll(".leaf-group");
     leaves.forEach(el => {
@@ -978,11 +1514,10 @@
   /* ---------- boot ---------- */
   async function init() {
     spawnFireflies();
-    render(); // draw an empty tree immediately so the canvas isn't blank
+    render(); // draws a seedling immediately so the canvas isn't blank
     const loaded = await loadEntries();
-    // Backfill fields for leaves saved before growth/aging existed.
     entries = loaded.map(e => ({
-      tags: "", updatedAt: Date.parse(e.date + "T" + (e.time || "00:00")) || Date.now(),
+      tags: "", archived: false, archivedAt: null, updatedAt: Date.parse(e.date + "T" + (e.time || "00:00")) || Date.now(),
       ...e
     }));
     dataReady = true;
