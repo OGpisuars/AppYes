@@ -69,6 +69,11 @@
     font-family: 'Cinzel', serif; font-weight: 600; font-size: 16px; letter-spacing: 2px;
     margin: 0; color: var(--moss-soft); text-shadow: 0 0 12px rgba(74,222,128,0.2);
   }
+  .brand .leaf-count {
+    font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: .5px;
+    color: var(--text-faint); border: 1px solid var(--line); border-radius: 10px;
+    padding: 2px 8px; white-space: nowrap; transition: color .3s, border-color .3s;
+  }
 
   .search-wrap { position: relative; flex: 1; min-width: 0; }
   .search-wrap input {
@@ -85,10 +90,42 @@
     font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .2s;
   }
   .wind-btn:hover { border-color: var(--moss-dim); color: var(--moss-soft); box-shadow: 0 0 14px rgba(74,222,128,0.15); transform: rotate(5deg); }
+  .wind-btn:disabled { opacity: .35; cursor: default; transform: none !important; box-shadow: none !important; }
+
+  /* ---------- filter bar ---------- */
+  .filterbar {
+    position: absolute; top: 71px; left: 0; right: 0; z-index: 9;
+    display: flex; gap: 8px; align-items: center; padding: 8px 20px;
+    overflow-x: auto; scrollbar-width: none;
+    background: linear-gradient(180deg, rgba(3,6,4,0.85) 0%, rgba(3,6,4,0.4) 100%);
+    border-bottom: 1px solid rgba(28, 46, 32, 0.35);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  }
+  .filterbar::-webkit-scrollbar { display: none; }
+  .chip {
+    flex-shrink: 0; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .5px;
+    color: var(--text-dim); background: var(--bg-input); border: 1px solid var(--line); border-radius: 999px;
+    padding: 6px 14px; cursor: pointer; transition: all .2s; white-space: nowrap;
+  }
+  .chip:hover { border-color: var(--moss-dim); color: var(--moss-soft); }
+  .chip.active { background: rgba(74,222,128,0.15); border-color: var(--moss); color: var(--moss-soft); box-shadow: 0 0 10px rgba(74,222,128,0.15); }
+  .chip-accent { margin-left: auto; border-color: var(--amber-dim); color: var(--amber); }
+  .chip-accent:hover { border-color: var(--amber); color: var(--amber); box-shadow: 0 0 10px rgba(224,169,74,0.2); }
+
+  /* ---------- zoom controls ---------- */
+  .zoom-controls { position: fixed; left: 20px; bottom: 32px; z-index: 12; display: flex; flex-direction: column; gap: 8px; }
+  .zc-btn {
+    width: 40px; height: 40px; border-radius: 50%; background: var(--bg-input); border: 1px solid var(--line);
+    color: var(--text-dim); font-size: 18px; font-family: 'JetBrains Mono', monospace; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: all .2s;
+  }
+  .zc-btn:hover { border-color: var(--moss-dim); color: var(--moss-soft); box-shadow: 0 0 12px rgba(74,222,128,0.15); }
+  .zc-btn:active { transform: scale(.92); }
+  .zc-center { font-size: 15px; }
 
   /* ---------- canvas (Pan/Zoom Engine) ---------- */
   .canvas-wrap {
-    position: absolute; inset: 0; top: 71px; /* Account for topbar */
+    position: absolute; inset: 0; top: 113px; /* Account for topbar + filterbar */
     z-index: 1; overflow: hidden;
     cursor: grab; touch-action: none; /* Disables all native touch-scrolling */
   }
@@ -156,6 +193,7 @@
   }
   .fab:hover { transform: scale(1.1); animation: none; box-shadow: 0 12px 28px rgba(0,0,0,0.7), 0 0 30px rgba(74,222,128,0.4); }
   .fab:active { transform: scale(.95); }
+  .fab:disabled { opacity: .4; cursor: default; animation: none; transform: none; }
   @keyframes pulseFab { 0% { box-shadow: 0 8px 24px rgba(0,0,0,0.6), 0 0 15px rgba(74,222,128,0.2); } 100% { box-shadow: 0 8px 24px rgba(0,0,0,0.6), 0 0 30px rgba(74,222,128,0.4); } }
 
   /* ---------- modal ---------- */
@@ -188,6 +226,7 @@
   .title-input::placeholder { color: rgba(139, 163, 148, 0.5); text-shadow: none; }
   .save-status { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-bottom: 20px; min-height: 15px; transition: color 0.3s; }
   .save-status.on { color: var(--moss); text-shadow: 0 0 8px rgba(74,222,128,0.4); }
+  .save-status.err { color: var(--danger); text-shadow: 0 0 8px rgba(201,106,90,0.4); }
 
   .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; }
   .field { display: flex; flex-direction: column; gap: 8px; } .field.full { grid-column: 1 / -1; }
@@ -204,10 +243,42 @@
 
   .hint-overlay { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10; color: var(--text-faint); font-size: 13px; font-family: 'JetBrains Mono', monospace; pointer-events: none; text-align: center; }
 
+  /* ---------- loading veil ---------- */
+  .loading-veil {
+    position: fixed; inset: 0; z-index: 30; background: var(--bg-deep);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+    transition: opacity .5s ease, visibility .5s ease;
+  }
+  .loading-veil.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+  .loading-leaf { width: 34px; height: 34px; animation: loadSway 1.4s ease-in-out infinite; filter: drop-shadow(0 0 10px rgba(74,222,128,0.5)); }
+  @keyframes loadSway { 0%, 100% { transform: rotate(-14deg) scale(1); } 50% { transform: rotate(14deg) scale(1.08); } }
+  .loading-veil span { font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 1.5px; color: var(--text-faint); text-transform: uppercase; }
+
+  /* ---------- toast ---------- */
+  .toast-host { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 25; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
+  .toast {
+    pointer-events: auto; display: flex; align-items: center; gap: 14px;
+    background: rgba(11, 18, 13, 0.95); border: 1px solid rgba(47, 92, 61, 0.6); border-radius: 999px;
+    padding: 10px 10px 10px 18px; box-shadow: 0 8px 28px rgba(0,0,0,0.6), 0 0 20px rgba(74,222,128,0.08);
+    font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--text-dim);
+    animation: toastIn .35s cubic-bezier(0.2,0.8,0.2,1);
+  }
+  .toast.leaving { animation: toastOut .3s ease forwards; }
+  @keyframes toastIn { 0% { opacity: 0; transform: translateY(14px) scale(.95); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes toastOut { 0% { opacity: 1; } 100% { opacity: 0; transform: translateY(8px) scale(.97); } }
+  .toast button { background: rgba(74,222,128,0.1); border: 1px solid var(--moss-dim); color: var(--moss-soft); font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: .5px; padding: 7px 14px; border-radius: 999px; cursor: pointer; transition: all .2s; white-space: nowrap; }
+  .toast button:hover { background: rgba(74,222,128,0.2); box-shadow: 0 0 12px rgba(74,222,128,0.25); }
+
   @media (max-width: 480px) {
     .brand h1 { display: none; } .field-row { grid-template-columns: 1fr; gap: 12px; }
     .topbar { padding: 12px 16px; gap: 12px; } .fab { bottom: 24px; right: 20px; width: 56px; height: 56px; font-size: 24px; }
     .modal-card { padding: 24px 20px 32px; }
+    .filterbar { padding: 7px 16px; top: 66px; }
+    .canvas-wrap { top: 105px; }
+    .zoom-controls { left: 16px; bottom: 24px; }
+    .zc-btn { width: 36px; height: 36px; font-size: 16px; }
+    .zc-center { font-size: 13px; }
+    .hint-overlay { display: none; }
   }
 </style>
 </head>
@@ -216,10 +287,22 @@
 <div class="canopy"></div>
 <div id="fireflies"></div>
 
+<div class="loading-veil" id="loadingVeil">
+  <svg class="loading-leaf" viewBox="-20 -50 40 55"><path fill="#4ade80" d="M0,-2 C -13,-13 -9,-30 -3,-38 L0,-45 L3,-38 C 9,-30 13,-13 0,-2 Z"/></svg>
+  <span>Waking the grove…</span>
+</div>
+
 <div class="topbar">
-  <div class="brand"><span class="glyph">🜃</span><h1>UNDERGROVE</h1></div>
+  <div class="brand"><span class="glyph">🜃</span><h1>UNDERGROVE</h1><span class="leaf-count" id="leafCount"></span></div>
   <div class="search-wrap"><input type="text" id="search" placeholder="Search the tree…" autocomplete="off"></div>
   <button class="wind-btn" id="clearAll" aria-label="Clear the grove" title="Let the wind take every leaf">💨</button>
+</div>
+
+<div class="filterbar" id="filterbar">
+  <button class="chip active" data-filter="all">All</button>
+  <button class="chip" data-filter="upcoming">Upcoming</button>
+  <button class="chip" data-filter="done">Turned</button>
+  <button class="chip chip-accent" id="jumpNext" title="Jump to the next upcoming leaf (J)">🎯 Next</button>
 </div>
 
 <!-- Custom Map Engine Canvas -->
@@ -230,35 +313,80 @@
   </div>
 </div>
 
-<div class="hint-overlay">pinch to zoom · drag to pan</div>
+<div class="hint-overlay">drag to pan · scroll or pinch to zoom</div>
 
-<button class="fab" id="fab" aria-label="Plant a new leaf">✦</button>
+<div class="zoom-controls" id="zoomControls">
+  <button class="zc-btn" id="zoomInBtn" aria-label="Zoom in" title="Zoom in (+)">+</button>
+  <button class="zc-btn" id="zoomOutBtn" aria-label="Zoom out" title="Zoom out (-)">−</button>
+  <button class="zc-btn zc-center" id="recenterBtn" aria-label="Recenter tree" title="Recenter (0)">◎</button>
+</div>
+
+<button class="fab" id="fab" aria-label="Plant a new leaf" title="Plant a new leaf (N)">✦</button>
 
 <div class="modal-overlay" id="overlay">
   <div class="modal-card" id="modalCard"></div>
 </div>
 
+<div class="toast-host" id="toastHost"></div>
+
 <script>
 (function() {
-  const STORAGE_KEY = "undergrove_entries_v3";
+  /* ---------- persistence (window.storage — personal, per-user) ---------- */
+  const STORAGE_KEY = "entries";
 
-  function getOwnerKey() {
-    let owner = localStorage.getItem("undergrove_owner_id");
-    if (!owner) { owner = "wanderer-" + Math.random().toString(36).slice(2, 8); localStorage.setItem("undergrove_owner_id", owner); }
-    return STORAGE_KEY + "_" + owner;
+  async function loadEntries() {
+    try {
+      const result = await window.storage.get(STORAGE_KEY, false);
+      return result && result.value ? JSON.parse(result.value) : [];
+    } catch (err) {
+      // Key not found yet, or a transient error — start with an empty grove either way.
+      console.warn("Undergrove: no saved entries yet, or failed to load.", err);
+      return [];
+    }
   }
-  const OWNER_KEY = getOwnerKey();
 
-  function loadEntries() { try { const raw = localStorage.getItem(OWNER_KEY); return raw ? JSON.parse(raw) : []; } catch(e) { return []; } }
-  function saveEntries(list) { localStorage.setItem(OWNER_KEY, JSON.stringify(list)); }
+  async function saveEntries(list) {
+    try {
+      const result = await window.storage.set(STORAGE_KEY, JSON.stringify(list), false);
+      return !!result;
+    } catch (err) {
+      console.error("Undergrove: failed to save entries.", err);
+      return false;
+    }
+  }
 
-  let entries = loadEntries();
-  let activeId = null, filterText = "", lastLayout = null, newLeafId = null, hasAutoCentered = false;
+  let entries = [];
+  let activeId = null, filterText = "", statusFilter = "all", lastLayout = null, newLeafId = null, hasAutoCentered = false;
+  let dataReady = false;
 
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
   function hashCode(str) { let h = 0; for (let i = 0; i < str.length; i++) { h = (h * 31 + str.charCodeAt(i)) >>> 0; } return h; }
   function escapeHtml(s) { return (s || "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function truncate(s, n) { s = s || "Untitled leaf"; return s.length > n ? s.slice(0, n - 1) + "…" : s; }
+
+  /* ---------- toast (undo) ---------- */
+  function showToast(message, { actionLabel, onAction, duration = 6000 } = {}) {
+    const host = document.getElementById("toastHost");
+    const el = document.createElement("div");
+    el.className = "toast";
+    el.innerHTML = `<span>${escapeHtml(message)}</span>`;
+    if (actionLabel && onAction) {
+      const btn = document.createElement("button");
+      btn.textContent = actionLabel;
+      btn.addEventListener("click", () => { dismiss(); onAction(); });
+      el.appendChild(btn);
+    }
+    host.appendChild(el);
+    let dismissed = false;
+    function dismiss() {
+      if (dismissed) return; dismissed = true;
+      el.classList.add("leaving");
+      setTimeout(() => el.remove(), 300);
+    }
+    const t = setTimeout(dismiss, duration);
+    el._dismiss = () => { clearTimeout(t); dismiss(); };
+    return el;
+  }
 
   /* ---------- PAN / ZOOM ENGINE ---------- */
   const wrap = document.getElementById('canvasWrap');
@@ -288,10 +416,20 @@
 
   function panToNode(x, y) {
     const wrapRect = wrap.getBoundingClientRect();
+    const ox = lastLayout ? lastLayout.vbX : 0, oy = lastLayout ? lastLayout.vbY : 0;
     scale = Math.max(scale, 0.9); // zoom in a bit if zoomed out
-    panX = (wrapRect.width / 2) - x * scale;
-    panY = (wrapRect.height / 2) - y * scale;
+    panX = (wrapRect.width / 2) - (x - ox) * scale;
+    panY = (wrapRect.height / 2) - (y - oy) * scale;
     updateTransform(true);
+  }
+
+  function zoomBy(delta) {
+    const rect = wrap.getBoundingClientRect();
+    const cx = rect.width / 2, cy = rect.height / 2;
+    const newScale = Math.min(Math.max(0.2, scale + delta), 3.5);
+    panX = cx - (cx - panX) * (newScale / scale);
+    panY = cy - (cy - panY) * (newScale / scale);
+    scale = newScale; updateTransform(true);
   }
 
   // Mouse Drag
@@ -382,17 +520,21 @@
     const vbw = BASE_VBW + Math.min(800, list.length * 26), vbh = BASE_VBH + Math.min(250, list.length * 6);
     const groundY = vbh - GROUND_MARGIN, trunkTopX = vbw / 2, trunkHeight = Math.min(180, 110 + list.length * 1.2) * (0.9 + lScale * 0.1), trunkTopY = groundY - trunkHeight;
 
+    // Real bounding box of everything drawn, so the viewBox can never clip a branch,
+    // twig, leaf or label no matter which direction limbs radiate or how far they reach.
+    let bbMinX = Infinity, bbMaxX = -Infinity, bbMinY = Infinity, bbMaxY = -Infinity;
+    function extend(x, y, pad) { pad = pad || 0; if (x - pad < bbMinX) bbMinX = x - pad; if (x + pad > bbMaxX) bbMaxX = x + pad; if (y - pad < bbMinY) bbMinY = y - pad; if (y + pad > bbMaxY) bbMaxY = y + pad; }
+
     const tLeft = [], tRight = [];
     for (let s = 0; s <= 18; s++) {
       const f = s / 18, y = groundY - f * trunkHeight, wgt = (1 - f), halfw = (18 + wgt * 24), sway = Math.sin(f * Math.PI * 0.6) * 7;
       tLeft.push([trunkTopX - halfw + sway, y]); tRight.push([trunkTopX + halfw + sway, y]);
     }
+    tLeft.forEach(p => extend(p[0], p[1], 4)); tRight.forEach(p => extend(p[0], p[1], 4));
     let trunkPath = "M " + tLeft.map(p => p.join(",")).join(" L ") + " L " + tRight.slice().reverse().map(p => p.join(",")).join(" L ") + " Z";
 
     const sortedList = getSortedEntries(list), perLimb = LIMBS.map(() => []);
     sortedList.forEach((e, i) => perLimb[i % LIMBS.length].push(e));
-
-    let maxNodeY = trunkTopY;
 
     const limbs = LIMBS.map((limb, li) => {
       const angleRad = limb.angle * Math.PI / 180, u = [Math.sin(angleRad), -Math.cos(angleRad)], perp = [Math.cos(angleRad), Math.sin(angleRad)];
@@ -407,14 +549,17 @@
         const [bx, by] = rotVec(u[0], u[1], side * branchAngle), endX = px + bx * branchLen, endY = py + by * branchLen;
         const ctrlX = (px + endX) / 2 + perp[0] * side * 14, ctrlY = (py + endY) / 2 + perp[1] * side * 14;
         
-        maxNodeY = Math.min(maxNodeY, endY);
+        extend(px, py, 12); extend(ctrlX, ctrlY, 12);
+        extend(endX, endY, 72); // room for the leaf shape + its label above it
 
         const twigs = []; const twigCount = 1 + (seed % 3);
         for (let k = 0; k < twigCount; k++) {
           const t = 0.35 + ((seed >> (k + 2)) % 34) / 100, p = bezierPoint([px, py], [ctrlX, ctrlY], [endX, endY], t);
           const twigSide = (k % 2 === 0) ? side : -side, twigAngle = (26 + ((seed >> (k + 4)) % 22)) * Math.PI / 180;
           const twigLen = (22 + ((seed >> (k + 1)) % 20)) * lScale, baseAngle = Math.atan2(p.tx, -p.ty), dir = baseAngle + twigSide * twigAngle;
-          twigs.push({ x1: p.x, y1: p.y, x2: p.x + Math.sin(dir) * twigLen, y2: p.y - Math.cos(dir) * twigLen, angle: dir * 180 / Math.PI });
+          const tx2 = p.x + Math.sin(dir) * twigLen, ty2 = p.y - Math.cos(dir) * twigLen;
+          twigs.push({ x1: p.x, y1: p.y, x2: tx2, y2: ty2, angle: dir * 180 / Math.PI });
+          extend(tx2, ty2, 30);
         }
         branches.push({ entry, startX: px, startY: py, endX, endY, ctrlX, ctrlY, angleDeg: Math.atan2(bx, -by) * 180 / Math.PI, twigs });
       });
@@ -424,6 +569,7 @@
         const d = (s / lsteps) * limbLen, f = d / limbLen, halfw = (14 - f * 10) * lScale, [cx, cy] = centerAt(d);
         lLeft.push([cx - perp[0] * halfw, cy - perp[1] * halfw]); lRight.push([cx + perp[0] * halfw, cy + perp[1] * halfw]);
       }
+      lLeft.forEach(p => extend(p[0], p[1], 4)); lRight.forEach(p => extend(p[0], p[1], 4));
       const limbPath = "M " + lLeft.map(p => p.join(",")).join(" L ") + " L " + lRight.slice().reverse().map(p => p.join(",")).join(" L ") + " Z";
 
       const fillerTwigs = []; const usedD = branches.map((b, j) => baseLen * 0.4 + (j + 1) * spacing);
@@ -431,17 +577,36 @@
         if (usedD.some(ud => Math.abs(ud - d) < 20) || hashCode("filler-" + li + "-" + Math.round(d)) % 6 === 0) continue;
         const [cx, cy] = centerAt(d), seed = hashCode("filler-" + li + "-" + Math.round(d)), side = (seed % 2 === 0) ? 1 : -1;
         const fAngle = (34 + (seed % 26)) * Math.PI / 180, fLen = (16 + (seed % 16)) * lScale, [fx, fy] = rotVec(u[0], u[1], side * fAngle);
-        fillerTwigs.push({ x1: cx, y1: cy, x2: cx + fx * fLen, y2: cy + fy * fLen, angle: Math.atan2(fx, -fy) * 180 / Math.PI });
+        const fx2 = cx + fx * fLen, fy2 = cy + fy * fLen;
+        fillerTwigs.push({ x1: cx, y1: cy, x2: fx2, y2: fy2, angle: Math.atan2(fx, -fy) * 180 / Math.PI });
+        extend(fx2, fy2, 22);
       }
       return { path: limbPath, branches, fillerTwigs };
     });
 
-    // Auto adjust height bounding
-    const finalVBH = Math.max(BASE_VBH, groundY - maxNodeY + 150);
-    return { width: vbw, height: finalVBH, groundY: finalVBH - GROUND_MARGIN, trunkTopX, trunkPath, limbs };
+    // Ground ellipse extends a bit below/beside the trunk base — make sure it's included too.
+    extend(trunkTopX - vbw * 0.36, groundY + 34); extend(trunkTopX + vbw * 0.36, groundY + 34);
+
+    const PAD = 60;
+    const vbX = bbMinX - PAD, vbY = bbMinY - PAD;
+    const finalW = (bbMaxX - bbMinX) + PAD * 2, finalH = (bbMaxY - bbMinY) + PAD * 2;
+    return { vbX, vbY, width: finalW, height: finalH, groundY, trunkTopX, trunkPath, limbs };
   }
 
-  function matchesFilter(e) { const q = filterText.trim().toLowerCase(); return !q || (e.title + " " + e.location + " " + e.notes).toLowerCase().includes(q); }
+  function matchesFilter(e) {
+    if (statusFilter === "done" && !e.done) return false;
+    if (statusFilter === "upcoming" && e.done) return false;
+    const q = filterText.trim().toLowerCase();
+    return !q || (e.title + " " + e.location + " " + e.notes).toLowerCase().includes(q);
+  }
+
+  function updateLeafCount() {
+    const el = document.getElementById("leafCount");
+    if (!el) return;
+    if (!entries.length) { el.textContent = ""; return; }
+    const doneCount = entries.filter(e => e.done).length;
+    el.textContent = `${entries.length} leaf${entries.length === 1 ? '' : 'ves'} · ${doneCount} turned`;
+  }
 
   function render() {
     const svg = document.getElementById("treeSvg");
@@ -452,12 +617,12 @@
     // Explicit px sizing required for custom Pan/Zoom logic to work smoothly
     svg.setAttribute("width", layout.width);
     svg.setAttribute("height", layout.height);
-    svg.setAttribute("viewBox", `0 0 ${layout.width} ${layout.height}`);
+    svg.setAttribute("viewBox", `${layout.vbX} ${layout.vbY} ${layout.width} ${layout.height}`);
     
     if (!hasAutoCentered && layout.width > 0) { setTimeout(() => { centerTree(layout); hasAutoCentered = true; }, 50); }
 
     let defs = `<defs><radialGradient id="groundGlow" cx="50%" cy="100%" r="70%"><stop offset="0%" stop-color="rgba(74,222,128,0.12)"/><stop offset="100%" stop-color="rgba(74,222,128,0)"/></radialGradient></defs>`;
-    let ground = `<ellipse cx="${layout.width / 2}" cy="${layout.groundY + 8}" rx="${layout.width * 0.35}" ry="24" fill="url(#groundGlow)"/>`;
+    let ground = `<ellipse cx="${layout.trunkTopX}" cy="${layout.groundY + 8}" rx="${layout.width * 0.35}" ry="24" fill="url(#groundGlow)"/>`;
 
     let limbPaths = "", branchesSvg = "", fillerSvg = "", leavesSvg = "";
     const miniLeafD = "M0,-1 C -7,-7 -5,-16 -1,-20 L0,-23 L1,-20 C 5,-16 7,-7 0,-1 Z";
@@ -489,7 +654,11 @@
       });
     });
 
-    let emptyMsg = list.length === 0 ? `<text class="empty-note" x="${layout.width / 2}" y="${layout.groundY - 240}">No leaves yet — press ✦ to plant</text>` : "";
+    let emptyMsg = "";
+    if (list.length === 0) {
+      const msg = entries.length === 0 ? "No leaves yet — press ✦ to plant" : "No leaves match your search";
+      emptyMsg = `<text class="empty-note" x="${layout.trunkTopX}" y="${layout.groundY - 240}">${escapeHtml(msg)}</text>`;
+    }
     
     svg.innerHTML = defs + ground + `<g id="woodGroup" class="wood-group" style="transform-origin:${layout.trunkTopX}px ${layout.groundY}px"><path class="trunk" d="${layout.trunkPath}"/>${limbPaths}${fillerSvg}${branchesSvg}</g><g id="leafGroup">${leavesSvg}</g>${emptyMsg}`;
 
@@ -501,7 +670,13 @@
         if (dist > 8) return; 
         openModal(g.getAttribute("data-id"));
       });
+      g.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openModal(g.getAttribute("data-id")); }
+      });
     });
+
+    updateLeafCount();
+    document.getElementById("clearAll").disabled = entries.length === 0;
 
     if (newLeafId) setTimeout(() => { newLeafId = null; }, 700);
   }
@@ -514,9 +689,9 @@
       <div class="drag-handle"></div>
       <div class="modal-top">
         <input type="text" class="title-input" id="f-title" placeholder="Untitled leaf…" value="${escapeHtml(entry.title)}">
-        <button class="close-btn" id="closeModal">✕</button>
+        <button class="close-btn" id="closeModal" aria-label="Close">✕</button>
       </div>
-      <div class="save-status" id="saveStatus">Saved to this device</div>
+      <div class="save-status" id="saveStatus" aria-live="polite">Saved to your grove</div>
       <div class="field-row">
         <div class="field"><label>Date</label><input type="date" id="f-date" value="${entry.date || ''}"></div>
         <div class="field"><label>Time</label><input type="time" id="f-time" value="${entry.time || ''}"></div>
@@ -536,7 +711,14 @@
 
     document.getElementById("f-done").addEventListener("change", (ev) => { entry.done = ev.target.checked; persist(); render(); });
     document.getElementById("deleteBtn").addEventListener("click", () => {
-      if (confirm("Remove this leaf from the tree? This cannot be undone.")) { entries = entries.filter(e => e.id !== id); persist(); closeModal(); render(); }
+      const idx = entries.findIndex(e => e.id === id);
+      if (idx === -1) return;
+      const [removed] = entries.splice(idx, 1);
+      persist(); closeModal(); render();
+      showToast(`"${truncate(removed.title, 24)}" removed`, {
+        actionLabel: "Undo",
+        onAction: () => { entries.splice(idx, 0, removed); persist(); render(); }
+      });
     });
     document.getElementById("closeModal").addEventListener("click", closeModal);
     overlay.classList.add("show");
@@ -544,12 +726,30 @@
 
   function closeModal() { document.getElementById("overlay").classList.remove("show"); activeId = null; }
   document.getElementById("overlay").addEventListener("click", (e) => { if (e.target.id === "overlay") closeModal(); });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && document.getElementById("overlay").classList.contains("show")) closeModal();
+  });
 
   function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
-  function persist() { saveEntries(entries); const status = document.getElementById("saveStatus"); if (status) { status.textContent = "✓ Saved to this device"; status.classList.add("on"); clearTimeout(persist._t); persist._t = setTimeout(() => { if (status) { status.textContent = "Saved to this device"; status.classList.remove("on"); } }, 1500); } }
+
+  function persist() {
+    saveEntries(entries).then(ok => {
+      const status = document.getElementById("saveStatus");
+      if (!status) return;
+      if (ok) {
+        status.textContent = "✓ Saved to your grove"; status.classList.remove("err"); status.classList.add("on");
+      } else {
+        status.textContent = "⚠ Couldn't save — check your connection"; status.classList.remove("on"); status.classList.add("err");
+        return; // leave the warning up rather than fading it out
+      }
+      clearTimeout(persist._t);
+      persist._t = setTimeout(() => { if (status) { status.textContent = "Saved to your grove"; status.classList.remove("on"); } }, 1500);
+    });
+  }
 
   /* ---------- global events ---------- */
   document.getElementById("fab").addEventListener("click", () => {
+    if (!dataReady) return;
     const e = { id: uid(), title: "", date: new Date().toISOString().slice(0, 10), time: "", location: "", notes: "", done: false };
     entries.push(e); newLeafId = e.id; persist(); render();
     setTimeout(() => openModal(e.id), 700);
@@ -557,9 +757,63 @@
 
   document.getElementById("search").addEventListener("input", (e) => { filterText = e.target.value; render(); });
 
+  document.querySelectorAll(".chip[data-filter]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      statusFilter = btn.getAttribute("data-filter");
+      document.querySelectorAll(".chip[data-filter]").forEach(b => b.classList.toggle("active", b === btn));
+      render();
+    });
+  });
+
+  function jumpToNext() {
+    if (!lastLayout) return;
+    const visible = entries.filter(matchesFilter);
+    if (!visible.length) { showToast("No leaves match right now"); return; }
+    const now = Date.now();
+    let target = null, bestDiff = Infinity;
+    visible.forEach(e => {
+      if (e.done) return;
+      const dt = new Date(e.date + "T" + (e.time || "00:00")).getTime();
+      if (!isNaN(dt)) { const diff = dt - now; if (diff >= 0 && diff < bestDiff) { bestDiff = diff; target = e; } }
+    });
+    if (!target) target = visible.slice().reverse().find(e => !e.done) || visible[visible.length - 1];
+    for (const limb of lastLayout.limbs) {
+      const b = limb.branches.find(br => br.entry.id === target.id);
+      if (b) { panToNode(b.endX, b.endY); return; }
+    }
+  }
+  document.getElementById("jumpNext").addEventListener("click", jumpToNext);
+
+  document.getElementById("zoomInBtn").addEventListener("click", () => zoomBy(0.25));
+  document.getElementById("zoomOutBtn").addEventListener("click", () => zoomBy(-0.25));
+  document.getElementById("recenterBtn").addEventListener("click", () => { if (lastLayout) centerTree(lastLayout, true); });
+
+  // Keyboard shortcuts — skipped while typing in a field or while the modal is open.
+  document.addEventListener("keydown", (e) => {
+    const tag = (e.target.tagName || "").toLowerCase();
+    if (tag === "input" || tag === "textarea" || e.target.isContentEditable) return;
+    if (document.getElementById("overlay").classList.contains("show")) return;
+    const step = 70;
+    switch (e.key) {
+      case "ArrowUp": panY += step; updateTransform(true); e.preventDefault(); break;
+      case "ArrowDown": panY -= step; updateTransform(true); e.preventDefault(); break;
+      case "ArrowLeft": panX += step; updateTransform(true); e.preventDefault(); break;
+      case "ArrowRight": panX -= step; updateTransform(true); e.preventDefault(); break;
+      case "+": case "=": zoomBy(0.2); e.preventDefault(); break;
+      case "-": case "_": zoomBy(-0.2); e.preventDefault(); break;
+      case "0": if (lastLayout) centerTree(lastLayout, true); e.preventDefault(); break;
+      case "/": document.getElementById("search").focus(); e.preventDefault(); break;
+      case "j": case "J": jumpToNext(); e.preventDefault(); break;
+      case "n": case "N": document.getElementById("fab").click(); e.preventDefault(); break;
+    }
+  });
+
+  window.addEventListener("resize", debounce(() => { if (lastLayout) centerTree(lastLayout, true); }, 200));
+
   document.getElementById("clearAll").addEventListener("click", () => {
     if (entries.length === 0 || !confirm("Let the wind take every leaf?")) return;
     closeModal();
+    const removedEntries = entries.slice();
     const svg = document.getElementById("treeSvg"), leaves = svg.querySelectorAll(".leaf-group");
     leaves.forEach(el => {
       const dx = (300 + Math.random() * 500) * (Math.random() < 0.5 ? -1 : 1), dy = -(80 + Math.random() * 200), rot = (Math.random() * 720 - 360);
@@ -572,11 +826,31 @@
       wood.insertAdjacentHTML("beforeend", `<path class="crack-line flash" d="M ${ox-6},${oy-6} L ${ox+4},${oy-20} L ${ox-3},${oy-30}"/><path class="crack-line flash" d="M ${ox+8},${oy-4} L ${ox-2},${oy-22} L ${ox+6},${oy-34}"/>`);
       setTimeout(() => wood.classList.add("topple"), 650);
     }
-    setTimeout(() => { entries = []; persist(); render(); const fw = document.getElementById("woodGroup"), fl = document.getElementById("leafGroup"); if (fw) fw.classList.add("regrow"); if (fl) fl.classList.add("regrow"); centerTree(lastLayout, true); }, 1800);
+    setTimeout(() => {
+      entries = []; persist(); render();
+      const fw = document.getElementById("woodGroup"), fl = document.getElementById("leafGroup");
+      if (fw) fw.classList.add("regrow"); if (fl) fl.classList.add("regrow");
+      centerTree(lastLayout, true);
+      showToast(`${removedEntries.length} leaf${removedEntries.length === 1 ? '' : 'ves'} taken by the wind`, {
+        actionLabel: "Undo", duration: 8000,
+        onAction: () => { entries = removedEntries; persist(); hasAutoCentered = false; render(); }
+      });
+    }, 1800);
   });
 
-  spawnFireflies();
-  render();
+  /* ---------- boot ---------- */
+  async function init() {
+    spawnFireflies();
+    render(); // draw an empty tree immediately so the canvas isn't blank
+    entries = await loadEntries();
+    dataReady = true;
+    hasAutoCentered = false;
+    render();
+    const veil = document.getElementById("loadingVeil");
+    if (veil) veil.classList.add("hidden");
+  }
+
+  init();
 })();
 </script>
 </body>
