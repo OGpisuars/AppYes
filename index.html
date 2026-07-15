@@ -24,6 +24,10 @@
     --text-dim: #9ab3a4;
     --text-faint: #4a5f52;
     --danger: #c96a5a;
+    --leaf-fresh: #6fe9a0;
+    --leaf-fresh-glow: #a8ffce;
+    --leaf-wilt: #5c4a30;
+    --leaf-wilt-glow: #8a6f45;
   }
 
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -154,18 +158,31 @@
   
   .leaf-group { cursor: pointer; animation: sway ease-in-out infinite; transform-box: fill-box; transform-origin: bottom center; }
   .leaf-group .hit { fill: transparent; cursor: pointer; } 
-  .leaf-body { fill: var(--moss-dim); stroke: var(--moss); stroke-width: 1; filter: drop-shadow(0 2px 6px rgba(74,222,128,0.3)); transition: all .3s; }
+  .leaf-body { fill: var(--leaf-fill, var(--moss-dim)); stroke: var(--leaf-stroke, var(--moss)); stroke-width: 1; filter: drop-shadow(0 2px 6px rgba(74,222,128,0.3)); transition: all .3s; }
   .leaf-vein { stroke: rgba(3,8,5,0.6); stroke-width: 1; }
-  
-  .leaf-group:hover .leaf-body, .leaf-group:focus-visible .leaf-body { fill: var(--moss); filter: drop-shadow(0 0 12px rgba(124,240,163,0.9)); }
+  .leaf-bud .leaf-body { stroke-width: 1.3; }
+
+  .leaf-group:hover .leaf-body, .leaf-group:focus-visible .leaf-body { fill: var(--moss); stroke: var(--moss-soft); filter: drop-shadow(0 0 12px rgba(124,240,163,0.9)); }
   .leaf-group.done .leaf-body { fill: var(--amber-dim); stroke: var(--amber); filter: drop-shadow(0 2px 4px rgba(224,169,74,0.3)); }
   .leaf-group.done:hover .leaf-body, .leaf-group.done:focus-visible .leaf-body { fill: var(--amber); filter: drop-shadow(0 0 12px rgba(224,169,74,0.8)); }
+  .leaf-group.leaf-fresh .leaf-body { filter: drop-shadow(0 0 13px rgba(160,255,200,0.75)); }
+
+  /* ---------- knowledge-graph tag links ---------- */
+  .tag-link {
+    fill: none; stroke: rgba(124,240,163,0.28); stroke-width: 1.3; stroke-dasharray: 2 6; stroke-linecap: round;
+    filter: drop-shadow(0 0 3px rgba(74,222,128,0.2)); pointer-events: none; animation: flowDash 3.2s linear infinite;
+    transition: stroke .3s, opacity .3s;
+  }
+  .tag-link.active { stroke: rgba(168,255,206,0.9); stroke-width: 1.8; filter: drop-shadow(0 0 7px rgba(124,240,163,0.6)); }
+  @keyframes flowDash { to { stroke-dashoffset: -40; } }
 
   @keyframes sway { 0%, 100% { transform: rotate(-2.5deg); } 50% { transform: rotate(2.5deg); } }
   .leaf-group.new-leaf { animation: sprout 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards, sway ease-in-out infinite; }
   @keyframes sprout { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 
   .mini-leaf { fill: var(--moss-dim); opacity: .6; stroke: var(--moss-dim); stroke-width: .5; }
+  .twig-deep { opacity: .55; }
+  .mini-leaf-deep { opacity: .38; }
 
   /* ---------- animations ---------- */
   .wood-group { transition: transform 1.2s cubic-bezier(.55,.05,.7,.35), opacity 1.2s ease .3s; transform-box: view-box; }
@@ -227,6 +244,7 @@
   .save-status { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); margin-bottom: 20px; min-height: 15px; transition: color 0.3s; }
   .save-status.on { color: var(--moss); text-shadow: 0 0 8px rgba(74,222,128,0.4); }
   .save-status.err { color: var(--danger); text-shadow: 0 0 8px rgba(201,106,90,0.4); }
+  .growth-readout { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .3px; color: var(--text-dim); margin: -10px 0 18px; }
 
   .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; }
   .field { display: flex; flex-direction: column; gap: 8px; } .field.full { grid-column: 1 / -1; }
@@ -363,6 +381,38 @@
   function hashCode(str) { let h = 0; for (let i = 0; i < str.length; i++) { h = (h * 31 + str.charCodeAt(i)) >>> 0; } return h; }
   function escapeHtml(s) { return (s || "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function truncate(s, n) { s = s || "Untitled leaf"; return s.length > n ? s.slice(0, n - 1) + "…" : s; }
+
+  /* ---------- organic growth: word count → leaf size/shape ---------- */
+  function wordCount(entry) { return ((entry.title || "") + " " + (entry.notes || "")).trim().split(/\s+/).filter(Boolean).length; }
+  function growthStage(wc) {
+    if (wc < 6) return { scale: 0.66 + Math.min(1, wc / 6) * 0.14, bud: true, label: "Bud" };
+    const t = Math.min(1, Math.log(wc + 1) / Math.log(120));
+    if (wc < 25) return { scale: 0.86 + t * 0.3, bud: false, label: "Sprouting" };
+    if (wc < 90) return { scale: 0.9 + t * 0.4, bud: false, label: "Leafing" };
+    return { scale: Math.min(1.5, 0.95 + t * 0.55), bud: false, label: "Full leaf" };
+  }
+
+  /* ---------- organic aging: time since last tended → leaf color ---------- */
+  function hexLerp(a, b, t) {
+    const pa = [1, 3, 5].map(i => parseInt(a.substr(i, 2), 16)), pb = [1, 3, 5].map(i => parseInt(b.substr(i, 2), 16));
+    return "#" + pa.map((v, i) => Math.round(v + (pb[i] - v) * Math.max(0, Math.min(1, t))).toString(16).padStart(2, "0")).join("");
+  }
+  function leafFreshness(updatedAt) {
+    const days = Math.max(0, (Date.now() - (updatedAt || Date.now())) / 86400000);
+    const BASE_FILL = "#245234", BASE_STROKE = "#4ade80"; // matches --moss-dim / --moss, the resting look
+    if (days <= 30) {
+      const t = days / 30;
+      return { fill: hexLerp("#6fe9a0", BASE_FILL, t), stroke: hexLerp("#a8ffce", BASE_STROKE, t), fresh: days <= 2.5, days };
+    }
+    const t2 = Math.min(1, (days - 30) / 100);
+    return { fill: hexLerp(BASE_FILL, "#5c4a30", t2), stroke: hexLerp(BASE_STROKE, "#8a6f45", t2), fresh: false, days };
+  }
+  function freshnessLabel(days) {
+    if (days <= 2.5) return "tended today";
+    if (days < 14) return `tended ${Math.round(days)}d ago`;
+    if (days < 45) return `resting ${Math.round(days)}d — could use a visit`;
+    return `wilting — untouched ${Math.round(days)}d`;
+  }
 
   /* ---------- toast (undo) ---------- */
   function showToast(message, { actionLabel, onAction, duration = 6000 } = {}) {
@@ -552,7 +602,7 @@
         extend(px, py, 12); extend(ctrlX, ctrlY, 12);
         extend(endX, endY, 72); // room for the leaf shape + its label above it
 
-        const twigs = []; const twigCount = 1 + (seed % 3);
+        const twigs = []; const twigCount = 2 + (seed % 3);
         for (let k = 0; k < twigCount; k++) {
           const t = 0.35 + ((seed >> (k + 2)) % 34) / 100, p = bezierPoint([px, py], [ctrlX, ctrlY], [endX, endY], t);
           const twigSide = (k % 2 === 0) ? side : -side, twigAngle = (26 + ((seed >> (k + 4)) % 22)) * Math.PI / 180;
@@ -572,14 +622,32 @@
       lLeft.forEach(p => extend(p[0], p[1], 4)); lRight.forEach(p => extend(p[0], p[1], 4));
       const limbPath = "M " + lLeft.map(p => p.join(",")).join(" L ") + " L " + lRight.slice().reverse().map(p => p.join(",")).join(" L ") + " Z";
 
+      // Background filler foliage — denser, bigger, and less sparse both the fuller the tree
+      // gets AND the longer this particular limb is, so the big main branches especially
+      // fill out with lush background wood instead of looking sparse.
       const fillerTwigs = []; const usedD = branches.map((b, j) => baseLen * 0.4 + (j + 1) * spacing);
-      for (let d = baseLen * 0.2; d < limbLen - 18; d += 24 * lScale) {
-        if (usedD.some(ud => Math.abs(ud - d) < 20) || hashCode("filler-" + li + "-" + Math.round(d)) % 6 === 0) continue;
-        const [cx, cy] = centerAt(d), seed = hashCode("filler-" + li + "-" + Math.round(d)), side = (seed % 2 === 0) ? 1 : -1;
-        const fAngle = (34 + (seed % 26)) * Math.PI / 180, fLen = (16 + (seed % 16)) * lScale, [fx, fy] = rotVec(u[0], u[1], side * fAngle);
-        const fx2 = cx + fx * fLen, fy2 = cy + fy * fLen;
-        fillerTwigs.push({ x1: cx, y1: cy, x2: fx2, y2: fy2, angle: Math.atan2(fx, -fy) * 180 / Math.PI });
-        extend(fx2, fy2, 22);
+      const density = Math.min(1, list.length / 24); // 0 = empty tree, 1 = a busy grove
+      const limbLenFactor = limb.baseLen / 150; // 1.0 for the shortest limb, up to ~1.47 for the longest
+      const growth = density + (limbLenFactor - 1); // combined fullness signal for this limb
+      const fillerStep = Math.max(8, 22 - growth * 10) * lScale;
+      const nearRadius = Math.max(8, 18 - growth * 8);
+      const skipMod = Math.round(4 + growth * 7); // higher = fewer skips = more filler sprigs
+      for (let d = baseLen * 0.14; d < limbLen - 12; d += fillerStep) {
+        const baseSeed = hashCode("filler-" + li + "-" + Math.round(d));
+        if (usedD.some(ud => Math.abs(ud - d) < nearRadius) || baseSeed % skipMod === 0) continue;
+        const [cx, cy] = centerAt(d);
+        const sides = (growth > 0.4 && baseSeed % 3 !== 0) ? [1, -1] : [(baseSeed % 2 === 0) ? 1 : -1];
+        sides.forEach((side, si) => {
+          const seed = hashCode("filler-" + li + "-" + Math.round(d) + "-" + si);
+          const fAngle = (32 + (seed % 28)) * Math.PI / 180;
+          const fLen = (18 + (seed % 24)) * lScale * (0.85 + limbLenFactor * 0.4);
+          const [fx, fy] = rotVec(u[0], u[1], side * fAngle);
+          const fx2 = cx + fx * fLen, fy2 = cy + fy * fLen;
+          const deep = seed % 5 === 0; // occasional smaller, dimmer background sprig for depth
+          const sizeFactor = 0.85 + limbLenFactor * 0.4;
+          fillerTwigs.push({ x1: cx, y1: cy, x2: fx2, y2: fy2, angle: Math.atan2(fx, -fy) * 180 / Math.PI, deep, sizeFactor });
+          extend(fx2, fy2, 18 + fLen * 0.3);
+        });
       }
       return { path: limbPath, branches, fillerTwigs };
     });
@@ -597,7 +665,7 @@
     if (statusFilter === "done" && !e.done) return false;
     if (statusFilter === "upcoming" && e.done) return false;
     const q = filterText.trim().toLowerCase();
-    return !q || (e.title + " " + e.location + " " + e.notes).toLowerCase().includes(q);
+    return !q || (e.title + " " + e.location + " " + e.notes + " " + (e.tags || "")).toLowerCase().includes(q);
   }
 
   function updateLeafCount() {
@@ -613,54 +681,110 @@
     const list = entries.filter(matchesFilter);
     const layout = buildLayout(list);
     lastLayout = layout;
-    
-    // Explicit px sizing required for custom Pan/Zoom logic to work smoothly
-    svg.setAttribute("width", layout.width);
-    svg.setAttribute("height", layout.height);
-    svg.setAttribute("viewBox", `${layout.vbX} ${layout.vbY} ${layout.width} ${layout.height}`);
-    
-    if (!hasAutoCentered && layout.width > 0) { setTimeout(() => { centerTree(layout); hasAutoCentered = true; }, 50); }
 
     let defs = `<defs><radialGradient id="groundGlow" cx="50%" cy="100%" r="70%"><stop offset="0%" stop-color="rgba(74,222,128,0.12)"/><stop offset="100%" stop-color="rgba(74,222,128,0)"/></radialGradient></defs>`;
-    let ground = `<ellipse cx="${layout.trunkTopX}" cy="${layout.groundY + 8}" rx="${layout.width * 0.35}" ry="24" fill="url(#groundGlow)"/>`;
 
     let limbPaths = "", branchesSvg = "", fillerSvg = "", leavesSvg = "";
     const miniLeafD = "M0,-1 C -7,-7 -5,-16 -1,-20 L0,-23 L1,-20 C 5,-16 7,-7 0,-1 Z";
-    
+    const budD = "M0,-1 C -5,-5 -4,-10 -1,-13 L0,-15 L1,-13 C 4,-10 5,-5 0,-1 Z";
+    const leafD = "M0,-2 C -13,-13 -9,-30 -3,-38 L0,-45 L3,-38 C 9,-30 13,-13 0,-2 Z";
+    const positionById = {}; // for drawing tag-link connectors after the tree itself is built
+
     layout.limbs.forEach(limb => {
       limbPaths += `<path class="trunk" d="${limb.path}"/>`;
-      fillerSvg += limb.fillerTwigs.map(tw => `<path class="twig" d="M ${tw.x1},${tw.y1} L ${tw.x2},${tw.y2}" stroke-width="2.5"/><g transform="translate(${tw.x2},${tw.y2}) rotate(${tw.angle})"><path class="mini-leaf" d="${miniLeafD}"/></g>`).join("");
+      fillerSvg += limb.fillerTwigs.map(tw => {
+        const deepCls = tw.deep ? " twig-deep" : "";
+        const leafScale = (tw.deep ? 0.72 : 1) * tw.sizeFactor;
+        const strokeW = (tw.deep ? 1.8 : 2.5) * tw.sizeFactor;
+        return `<path class="twig${deepCls}" d="M ${tw.x1},${tw.y1} L ${tw.x2},${tw.y2}" stroke-width="${strokeW.toFixed(2)}"/><g transform="translate(${tw.x2},${tw.y2}) rotate(${tw.angle}) scale(${leafScale.toFixed(2)})"><path class="mini-leaf${deepCls}" d="${miniLeafD}"/></g>`;
+      }).join("");
       limb.branches.forEach(b => {
         const strokeW = 5 + (hashCode(b.entry.id) % 3);
         branchesSvg += `<path class="branch" d="M ${b.startX},${b.startY} Q ${b.ctrlX},${b.ctrlY} ${b.endX},${b.endY}" stroke-width="${strokeW}"/>`;
         branchesSvg += b.twigs.map(tw => `<path class="twig" d="M ${tw.x1},${tw.y1} L ${tw.x2},${tw.y2}" stroke-width="3"/><g transform="translate(${tw.x2},${tw.y2}) rotate(${tw.angle}) scale(1.3)"><path class="mini-leaf" d="${miniLeafD}"/></g>`).join("");
         
         const e = b.entry, done = e.done ? "done" : "", isNew = e.id === newLeafId ? "new-leaf" : "";
-        const lscale = 1.05 + (hashCode(e.id + "s") % 30) / 100, dur = (3 + (hashCode(e.id + "d") % 20) / 10).toFixed(1), delay = (-(hashCode(e.id + "e") % 30) / 10).toFixed(1);
-        
+        const growth = growthStage(wordCount(e)), fresh = leafFreshness(e.updatedAt);
+        const jitter = 0.95 + (hashCode(e.id + "s") % 20) / 100;
+        const lscale = jitter * growth.scale, dur = (3 + (hashCode(e.id + "d") % 20) / 10).toFixed(1), delay = (-(hashCode(e.id + "e") % 30) / 10).toFixed(1);
+        const budCls = growth.bud ? " leaf-bud" : "", freshCls = (fresh.fresh && !e.done) ? " leaf-fresh" : "";
+        const leafStyle = e.done ? "" : `--leaf-fill:${fresh.fill}; --leaf-stroke:${fresh.stroke};`;
+        const shapeD = growth.bud ? budD : leafD;
+        const extraVeins = (!growth.bud && wordCount(e) >= 60)
+          ? `<path class="leaf-vein" d="M0,-14 L-5,-22"/><path class="leaf-vein" d="M0,-20 L5,-28"/>` : "";
+
+        positionById[e.id] = { x: b.endX, y: b.endY };
         // Track coordinate for camera panning
         if (isNew) setTimeout(() => panToNode(b.endX, b.endY), 50);
 
         leavesSvg += `
-          <g class="leaf-group ${done} ${isNew}" data-id="${e.id}" tabindex="0" role="button" aria-label="${escapeHtml(e.title || 'Untitled leaf')}" style="animation-duration: ${dur}s; animation-delay: ${delay}s;">
+          <g class="leaf-group ${done}${isNew ? ' new-leaf' : ''}${budCls}${freshCls}" data-id="${e.id}" tabindex="0" role="button" aria-label="${escapeHtml(e.title || 'Untitled leaf')}" style="animation-duration: ${dur}s; animation-delay: ${delay}s;">
             <title>${escapeHtml(e.title || 'Untitled leaf')}\n${e.date}</title>
             <circle class="hit" cx="${b.endX}" cy="${b.endY - 16 * lscale}" r="45"/>
-            <g transform="translate(${b.endX},${b.endY}) rotate(${b.angleDeg}) scale(${lscale})">
-              <path class="leaf-body" d="M0,-2 C -13,-13 -9,-30 -3,-38 L0,-45 L3,-38 C 9,-30 13,-13 0,-2 Z"/>
+            <g transform="translate(${b.endX},${b.endY}) rotate(${b.angleDeg}) scale(${lscale.toFixed(2)})" style="${leafStyle}">
+              <path class="leaf-body" d="${shapeD}"/>
               <path class="leaf-vein" d="M0,-4 L0,-40"/>
+              ${extraVeins}
             </g>
             <text class="leaf-label ${done}" x="${b.endX}" y="${b.endY - 36 * lscale - 12}">${escapeHtml(truncate(e.title, 16))}</text>
           </g>`;
       });
     });
 
+    // ---- knowledge-graph tag links: connect leaves that share a tag ----
+    let linksSvg = "";
+    const byTag = {};
+    list.forEach(e => (e.tags || "").split(",").map(t => t.trim().toLowerCase()).filter(Boolean).forEach(t => {
+      (byTag[t] = byTag[t] || []).push(e.id);
+    }));
+    let linkMinX = layout.vbX, linkMinY = layout.vbY, linkMaxX = layout.vbX + layout.width, linkMaxY = layout.vbY + layout.height;
+    const seenPairs = new Set();
+    Object.values(byTag).forEach(ids => {
+      for (let i = 0; i < ids.length; i++) {
+        for (let j = i + 1; j < ids.length; j++) {
+          const a = positionById[ids[i]], b2 = positionById[ids[j]];
+          if (!a || !b2) continue;
+          const key = ids[i] < ids[j] ? ids[i] + "|" + ids[j] : ids[j] + "|" + ids[i];
+          if (seenPairs.has(key)) continue;
+          seenPairs.add(key);
+          const mx = (a.x + b2.x) / 2, my = (a.y + b2.y) / 2 - Math.hypot(b2.x - a.x, b2.y - a.y) * 0.18;
+          linkMinX = Math.min(linkMinX, mx - 8); linkMaxX = Math.max(linkMaxX, mx + 8);
+          linkMinY = Math.min(linkMinY, my - 8); linkMaxY = Math.max(linkMaxY, my + 8);
+          linksSvg += `<path class="tag-link" data-a="${ids[i]}" data-b="${ids[j]}" d="M ${a.x},${a.y} Q ${mx},${my} ${b2.x},${b2.y}"/>`;
+        }
+      }
+    });
+    // Widen the viewBox if any connector arc bows out past the tree's own bounds.
+    if (linkMinX < layout.vbX || linkMinY < layout.vbY || linkMaxX > layout.vbX + layout.width || linkMaxY > layout.vbY + layout.height) {
+      layout.vbX = linkMinX; layout.vbY = linkMinY; layout.width = linkMaxX - linkMinX; layout.height = linkMaxY - linkMinY;
+    }
+
+    // Explicit px sizing required for custom Pan/Zoom logic to work smoothly
+    svg.setAttribute("width", layout.width);
+    svg.setAttribute("height", layout.height);
+    svg.setAttribute("viewBox", `${layout.vbX} ${layout.vbY} ${layout.width} ${layout.height}`);
+    if (!hasAutoCentered && layout.width > 0) { setTimeout(() => { centerTree(layout); hasAutoCentered = true; }, 50); }
+
+    let ground = `<ellipse cx="${layout.trunkTopX}" cy="${layout.groundY + 8}" rx="${layout.width * 0.35}" ry="24" fill="url(#groundGlow)"/>`;
     let emptyMsg = "";
     if (list.length === 0) {
       const msg = entries.length === 0 ? "No leaves yet — press ✦ to plant" : "No leaves match your search";
       emptyMsg = `<text class="empty-note" x="${layout.trunkTopX}" y="${layout.groundY - 240}">${escapeHtml(msg)}</text>`;
     }
     
-    svg.innerHTML = defs + ground + `<g id="woodGroup" class="wood-group" style="transform-origin:${layout.trunkTopX}px ${layout.groundY}px"><path class="trunk" d="${layout.trunkPath}"/>${limbPaths}${fillerSvg}${branchesSvg}</g><g id="leafGroup">${leavesSvg}</g>${emptyMsg}`;
+    svg.innerHTML = defs + ground + `<g id="woodGroup" class="wood-group" style="transform-origin:${layout.trunkTopX}px ${layout.groundY}px"><path class="trunk" d="${layout.trunkPath}"/>${limbPaths}${fillerSvg}${branchesSvg}</g><g id="linkGroup">${linksSvg}</g><g id="leafGroup">${leavesSvg}</g>${emptyMsg}`;
+
+    // Hovering/focusing a leaf highlights the knowledge-graph links touching it.
+    svg.querySelectorAll(".leaf-group").forEach(g => {
+      const id = g.getAttribute("data-id");
+      const related = svg.querySelectorAll(`.tag-link[data-a="${id}"], .tag-link[data-b="${id}"]`);
+      if (!related.length) return;
+      const setActive = on => related.forEach(l => l.classList.toggle("active", on));
+      g.addEventListener("mouseenter", () => setActive(true));
+      g.addEventListener("mouseleave", () => setActive(false));
+      g.addEventListener("focus", () => setActive(true));
+      g.addEventListener("blur", () => setActive(false));
+    });
 
     // Click handler with drag-cancellation
     svg.querySelectorAll(".leaf-group").forEach(g => {
@@ -692,10 +816,12 @@
         <button class="close-btn" id="closeModal" aria-label="Close">✕</button>
       </div>
       <div class="save-status" id="saveStatus" aria-live="polite">Saved to your grove</div>
+      <div class="growth-readout" id="growthReadout"></div>
       <div class="field-row">
         <div class="field"><label>Date</label><input type="date" id="f-date" value="${entry.date || ''}"></div>
         <div class="field"><label>Time</label><input type="time" id="f-time" value="${entry.time || ''}"></div>
         <div class="field full"><label>Location</label><input type="text" id="f-location" placeholder="e.g. The old oak library" value="${escapeHtml(entry.location)}"></div>
+        <div class="field full"><label>Tags</label><input type="text" id="f-tags" placeholder="e.g. project-x, ideas (comma separated — links related leaves)" value="${escapeHtml(entry.tags || '')}"></div>
       </div>
       <div class="notes-label">Notes &amp; Details</div>
       <textarea class="notes-area" id="f-notes" placeholder="What needs doing, remembering, or tending to…">${escapeHtml(entry.notes)}</textarea>
@@ -705,8 +831,19 @@
       </div>
     `;
 
-    ["title", "date", "time", "location", "notes"].forEach(f => {
-      document.getElementById("f-" + f).addEventListener("input", debounce(() => { entry[f] = document.getElementById("f-" + f).value; persist(); render(); }, 300));
+    function refreshGrowthReadout() {
+      const el = document.getElementById("growthReadout"); if (!el) return;
+      const wc = wordCount(entry), growth = growthStage(wc), fresh = leafFreshness(entry.updatedAt);
+      el.textContent = `${growth.bud ? "🌱" : "🍃"} ${growth.label} · ${wc} word${wc === 1 ? "" : "s"} · ${freshnessLabel(fresh.days)}`;
+    }
+    refreshGrowthReadout();
+
+    ["title", "date", "time", "location", "tags", "notes"].forEach(f => {
+      document.getElementById("f-" + f).addEventListener("input", debounce(() => {
+        entry[f] = document.getElementById("f-" + f).value;
+        entry.updatedAt = Date.now(); // editing is how you "tend" a leaf and keep it fresh
+        persist(); refreshGrowthReadout(); render();
+      }, 300));
     });
 
     document.getElementById("f-done").addEventListener("change", (ev) => { entry.done = ev.target.checked; persist(); render(); });
@@ -750,7 +887,7 @@
   /* ---------- global events ---------- */
   document.getElementById("fab").addEventListener("click", () => {
     if (!dataReady) return;
-    const e = { id: uid(), title: "", date: new Date().toISOString().slice(0, 10), time: "", location: "", notes: "", done: false };
+    const e = { id: uid(), title: "", date: new Date().toISOString().slice(0, 10), time: "", location: "", notes: "", tags: "", done: false, updatedAt: Date.now() };
     entries.push(e); newLeafId = e.id; persist(); render();
     setTimeout(() => openModal(e.id), 700);
   });
@@ -842,7 +979,12 @@
   async function init() {
     spawnFireflies();
     render(); // draw an empty tree immediately so the canvas isn't blank
-    entries = await loadEntries();
+    const loaded = await loadEntries();
+    // Backfill fields for leaves saved before growth/aging existed.
+    entries = loaded.map(e => ({
+      tags: "", updatedAt: Date.parse(e.date + "T" + (e.time || "00:00")) || Date.now(),
+      ...e
+    }));
     dataReady = true;
     hasAutoCentered = false;
     render();
