@@ -1,2 +1,2 @@
 # AppYes
-Just Trying to make a mobile app no idea abt what
+UnderGrove, a notes app
